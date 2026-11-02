@@ -24,8 +24,33 @@ export const Route = createFileRoute("/api/public/tts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const text = (new URL(request.url).searchParams.get("text") || "").slice(0, 1000).trim();
+        const text = (new URL(request.url).searchParams.get("text") || "").slice(0, 600).trim();
         if (!text) return Response.json({ error: "Empty text" }, { status: 400 });
+        try {
+          const { generateSpeech } = await import("@lovable.dev/ai-gateway");
+          const audio = await generateSpeech({
+            model: "google/gemini-3.1-flash-tts-preview",
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: `Læs op på dansk med en varm, blid og rolig stemme som en nærværende yogalærer. Tal naturligt og afslappet, med små pauser ved prikkerne: ${text}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Sulafat" } } },
+            },
+          });
+          return audio.toResponse({
+            headers: { "Content-Type": audio.contentType, "Cache-Control": "public, max-age=86400" },
+          });
+        } catch (e) {
+          console.error("AI voice failed, using fallback", e);
+        }
         try {
           const parts: Uint8Array[] = [];
           for (const c of chunk(text)) {

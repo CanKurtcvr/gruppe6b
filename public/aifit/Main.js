@@ -29,6 +29,22 @@ let halfTimeAnnounced = false;
 let matchStartAnnounced = false;
 let lastHintSpokenAt = 0;
 let showCameraGuides = true;
+// "Tæt på" mode: only upper body is graded, so you can stand/sit close to the camera.
+let closeUpMode = false;
+let lastDistanceState = "ok";
+let lastDistanceSpokenAt = 0;
+let distanceOkSince = 0;
+const CAM_W = 640;
+const CAM_H = 480;
+
+// Returns "far" | "close" | "ok" based on how much of the body fits in the frame.
+function getDistanceState(pose, m) {
+  if (m.shoulderWidth < CAM_W * 0.08) return "far";
+  if (closeUpMode) return "ok";
+  const ankleSeen = (p) => ptOK(p, 0.3) && p.y < CAM_H * 0.98;
+  if (!ankleSeen(pose.left_ankle) && !ankleSeen(pose.right_ankle)) return "close";
+  return "ok";
+}
 let lastFrameMatched = false;
 let lastBreathCueAt = 0;
 
@@ -90,8 +106,25 @@ function playWellnessChime(type = "soft") {
   } catch {}
 }
 
+// Each utterance gets an id; anything from an older id is dropped so voices never overlap.
+let speechToken = 0;
+const ttsCache = new Map(); // text -> Promise<objectURL>
+
+function fetchTtsUrl(text) {
+  if (ttsCache.has(text)) return ttsCache.get(text);
+  const p = fetch(`/api/public/tts?text=${encodeURIComponent(text)}`)
+    .then((r) => {
+      if (!r.ok) throw new Error("tts " + r.status);
+      return r.blob();
+    })
+    .then((b) => URL.createObjectURL(b));
+  p.catch(() => ttsCache.delete(text));
+  ttsCache.set(text, p);
+  return p;
+}
+
 function stopDanishVoice() {
-  fetch("/api/public/stop-speak").catch(() => {});
+  speechToken++;
   if (currentAudio) {
     try {
       currentAudio.pause();
@@ -105,38 +138,28 @@ function stopDanishVoice() {
   isSpeaking = false;
 }
 
-function speakWithBrowserFallback(text) {
-  if (typeof window === "undefined" || !window.speechSynthesis) {
-    isSpeaking = false;
+function speakWithBrowserFallback(text, token) {
+  if (typeof window === "undefined" || !window.speechSynthesis || token !== speechToken) {
+    if (token === speechToken) isSpeaking = false;
     return;
   }
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = "da-DK";
-  utter.rate = 0.82; // Slower, calmer wellness cadence
-  utter.pitch = 0.92;
+  utter.rate = 0.85;
+  utter.pitch = 0.95;
   utter.volume = 0.9;
 
   const voices = window.speechSynthesis.getVoices() || [];
-  const daVoices = voices.filter(
-    (v) =>
-      (v.lang && v.lang.toLowerCase().startsWith("da")) ||
-      (v.name && v.name.toLowerCase().includes("sara"))
-  );
+  const daVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith("da"));
   const preferred =
+    daVoices.find((v) => /natural|neural|online/i.test(v.name)) ||
     daVoices.find((v) => v.name.toLowerCase().includes("google")) ||
-    daVoices.find((v) => v.name.toLowerCase().includes("sara")) ||
     daVoices[0];
   if (preferred) utter.voice = preferred;
 
-  utter.onstart = () => {
-    isSpeaking = true;
-  };
-  utter.onend = () => {
-    isSpeaking = false;
-  };
-  utter.onerror = () => {
-    isSpeaking = false;
+  utter.onend = utter.onerror = () => {
+    if (token === speechToken) isSpeaking = false;
   };
   window.speechSynthesis.speak(utter);
 }
@@ -145,46 +168,34 @@ function speakDanish(text, { interrupt = false } = {}) {
   if (!voiceEnabled || !text) return;
   if (isSpeaking && !interrupt) return;
 
-  if (interrupt) {
-    stopDanishVoice();
-  }
+  stopDanishVoice(); // always cut whatever is playing/pending before starting new speech
+  const token = speechToken;
   lastSpokenText = text;
   isSpeaking = true;
 
-  const speakUrl = `/api/public/speak?text=${encodeURIComponent(text)}&interrupt=${
-    interrupt ? "1" : "0"
-  }`;
-
-  fetch(speakUrl)
-    .then((res) => res.json())
-    .then((data) => {
-      if (data && data.ok) {
+  fetchTtsUrl(text)
+    .then((url) => {
+      if (token !== speechToken) return;
+      const audio = new Audio(url);
+      audio.volume = 0.9;
+      currentAudio = audio;
+      audio.onended = () => {
+        if (token !== speechToken) return;
         isSpeaking = false;
-      } else if (!data?.skipped) {
-        const audio = new Audio(`/api/public/tts?text=${encodeURIComponent(text)}`);
-        audio.playbackRate = 0.86;
-        audio.preservesPitch = true;
-        audio.volume = 0.9;
-        currentAudio = audio;
-        audio.onended = () => {
-          isSpeaking = false;
-          currentAudio = null;
-        };
-        audio.onerror = () => {
-          currentAudio = null;
-          speakWithBrowserFallback(text);
-        };
-        audio.play().catch(() => {
-          currentAudio = null;
-          speakWithBrowserFallback(text);
-        });
-      } else {
-        isSpeaking = false;
-      }
+        currentAudio = null;
+      };
+      audio.onerror = () => {
+        if (token !== speechToken) return;
+        currentAudio = null;
+        speakWithBrowserFallback(text, token);
+      };
+      audio.play().catch(() => {
+        if (token !== speechToken) return;
+        currentAudio = null;
+        speakWithBrowserFallback(text, token);
+      });
     })
-    .catch(() => {
-      speakWithBrowserFallback(text);
-    });
+    .catch(() => speakWithBrowserFallback(text, token));
 }
 
 function announceCurrentPose() {
@@ -1863,6 +1874,8 @@ function keyPressed() {
     announceCurrentPose();
   } else if (key === "g" || key === "G") {
     showCameraGuides = !showCameraGuides;
+  } else if (key === "t" || key === "T") {
+    closeUpMode = !closeUpMode;
   } else if (key === " ") {
     togglePause();
   } else if (key === "s" || key === "S") {
@@ -2082,7 +2095,52 @@ function updatePoseTimer(bestPose) {
     currentFeedback = "⏸ Pause — tag dig god tid. Tryk mellemrum for at fortsætte";
     return;
   }
+  // Distance check: tell the user when they are too close / far, and when they are good.
+  const distState = getDistanceState(bestPose, metrics);
+  const nowMs = millis();
+  if (distState !== "ok") {
+    isPoseMatched = false;
+    holdSeconds = Math.max(0, holdSeconds - dt * 0.5);
+    currentGuidelines = [];
+    currentFeedback =
+      distState === "close"
+        ? "📏 Træd et par skridt tilbage, så hele kroppen og fødderne ses — eller tryk 'Tæt på' (T)"
+        : "📏 Kom lidt tættere på kameraet";
+    distanceOkSince = 0;
+    if (lastDistanceState !== distState || nowMs - lastDistanceSpokenAt > 9000) {
+      lastDistanceSpokenAt = nowMs;
+      speakDanish(
+        distState === "close"
+          ? "Træd roligt et par skridt tilbage... så jeg kan se hele kroppen og dine fødder."
+          : "Kom gerne lidt tættere på kameraet.",
+        { interrupt: lastDistanceState !== distState }
+      );
+    }
+    lastDistanceState = distState;
+    return;
+  }
+  if (lastDistanceState !== "ok") {
+    if (!distanceOkSince) distanceOkSince = nowMs;
+    if (nowMs - distanceOkSince > 700) {
+      lastDistanceState = "ok";
+      playWellnessChime("soft");
+      speakDanish("Perfekt... nu er du i en god afstand. Bliv stående der.", { interrupt: true });
+      lastHintSpokenAt = nowMs;
+    }
+  }
+
   const result = targetPose.evaluate(bestPose, metrics);
+  if (closeUpMode) {
+    // Legs are ignored in close-up mode: grade only torso and arms.
+    const ls = result.limbStates || {};
+    result.limbStates = { ...ls, leftLeg: "green", rightLeg: "green" };
+    const upperGreen = ["torso", "leftArm", "rightArm"].every((k) => (ls[k] || "red") === "green");
+    if (upperGreen) {
+      result.matched = true;
+      result.hint = "✨ Overkroppen er helt rigtig — hold stillingen roligt";
+    }
+    result.guidelines = (result.guidelines || []).filter((g) => !/ben|fod|knæ|ankel/i.test(g.label || ""));
+  }
   const wasMatchedLastFrame = lastFrameMatched;
   lastFrameMatched = !!result.matched;
   if (wasMatchedLastFrame && !result.matched) {
@@ -2643,6 +2701,9 @@ function drawSessionBar(pad, y) {
   );
   btn(showCameraGuides ? "◎ Mål: TIL" : "◎ Mål: FRA", showCameraGuides, () => {
     showCameraGuides = !showCameraGuides;
+  });
+  btn(closeUpMode ? "🪑 Tæt på: TIL" : "🪑 Tæt på", closeUpMode, () => {
+    closeUpMode = !closeUpMode;
   });
   pop();
 }
