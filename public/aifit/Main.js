@@ -4,7 +4,7 @@ let yogaSheetImg = null;
 let poseCropImages = [];
 
 // 15-second hold configuration (Strict: only counts up when ALL active body parts are GREEN)
-const HOLD_TARGET_SECONDS = 15.0;
+let HOLD_TARGET_SECONDS = 15.0;
 const GRACE_PERIOD_SECONDS = 0.45;
 const CELEBRATION_SECONDS = 4.2;
 
@@ -29,6 +29,8 @@ let halfTimeAnnounced = false;
 let matchStartAnnounced = false;
 let lastHintSpokenAt = 0;
 let showCameraGuides = true;
+let lastFrameMatched = false;
+let lastBreathCueAt = 0;
 
 // Background removal (Selfie Segmentation) onto Green Wellness Gradient
 let removeBackgroundEnabled = true;
@@ -111,8 +113,9 @@ function speakWithBrowserFallback(text) {
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = "da-DK";
-  utter.rate = 0.88; // Slower, calmer wellness cadence
-  utter.pitch = 0.96;
+  utter.rate = 0.82; // Slower, calmer wellness cadence
+  utter.pitch = 0.92;
+  utter.volume = 0.9;
 
   const voices = window.speechSynthesis.getVoices() || [];
   const daVoices = voices.filter(
@@ -159,7 +162,9 @@ function speakDanish(text, { interrupt = false } = {}) {
         isSpeaking = false;
       } else if (!data?.skipped) {
         const audio = new Audio(`/api/public/tts?text=${encodeURIComponent(text)}`);
-        audio.playbackRate = 0.9;
+        audio.playbackRate = 0.86;
+        audio.preservesPitch = true;
+        audio.volume = 0.9;
         currentAudio = audio;
         audio.onended = () => {
           isSpeaking = false;
@@ -315,6 +320,9 @@ function dist2D(a, b) {
 
 // Evaluate a numeric metric against strict green and medium orange thresholds
 function gradeError(errorValue, greenMax, orangeMax) {
+  const f = typeof strictFactor === "function" ? strictFactor() : 1;
+  greenMax *= f;
+  orangeMax *= f;
   if (errorValue <= greenMax) return "green";
   if (errorValue <= orangeMax) return "orange";
   return "red";
@@ -393,7 +401,7 @@ function getBodyMetrics(pose) {
 }
 
 // ---------------- 12 Yoga Poses with Strict Red/Orange/Green Limb Grading ----------------
-const YOGA_POSES = [
+const YOGA_LIBRARY = [
   {
     id: 1,
     name: "1. Træet (Samlede hænder)",
@@ -1601,6 +1609,15 @@ const YOGA_POSES = [
   },
 ];
 
+let YOGA_POSES = YOGA_LIBRARY;
+
+function setMode(index) {
+  currentModeIndex = index;
+  YOGA_POSES = buildSession(MODES[index].id, YOGA_LIBRARY);
+  completedPoses = new Set();
+  goToPose(0);
+}
+
 // ---------------- Setup & Lifecycle ----------------
 function initScenicElements() {
   bgParticles = [];
@@ -1644,9 +1661,9 @@ async function setup() {
       "senior-woman-yoga-positions-cellection_1308-122842.jpg.avif"
     );
     if (yogaSheetImg) {
-      poseCropImages = YOGA_POSES.map((p) =>
-        yogaSheetImg.get(p.crop.x, p.crop.y, p.crop.w, p.crop.h)
-      );
+      YOGA_LIBRARY.forEach((p) => {
+        p.cropImg = yogaSheetImg.get(p.crop.x, p.crop.y, p.crop.w, p.crop.h);
+      });
     }
   } catch (err) {
     console.warn("Could not load yoga reference image:", err);
@@ -1834,10 +1851,32 @@ function keyPressed() {
     announceCurrentPose();
   } else if (key === "g" || key === "G") {
     showCameraGuides = !showCameraGuides;
+  } else if (key === " ") {
+    togglePause();
+  } else if (key === "s" || key === "S") {
+    strictnessIndex = (strictnessIndex + 1) % STRICTNESS_LEVELS.length;
+  } else if (key === "m" || key === "M") {
+    setMode((currentModeIndex + 1) % MODES.length);
+  } else if (key === "f" || key === "F") {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+  return false;
+}
+
+function togglePause() {
+  sessionPaused = !sessionPaused;
+  if (sessionPaused) {
+    stopDanishVoice();
+  } else {
+    lastUpdateMs = millis();
+    speakDanish("Vi fortsætter roligt... når du er klar.", { interrupt: true });
   }
 }
 
 function goToPose(index) {
+  lastFrameMatched = false;
+  lastBreathCueAt = millis();
   currentPoseIndex = index;
   holdSeconds = 0;
   graceRemaining = 0;
@@ -1882,7 +1921,7 @@ function drawPoseTargetGuides(pose) {
   const targetPose = YOGA_POSES[currentPoseIndex];
   if (typeof targetPose.getTargetZones !== "function") return;
 
-  const zones = targetPose.getTargetZones(metrics) || [];
+  const zones = targetPose.getTargetZones(metrics, pose) || [];
   const pulse = 1 + Math.sin(millis() * 0.003) * 0.04;
 
   push();
@@ -2000,6 +2039,10 @@ function updatePoseTimer(bestPose) {
     };
     currentFeedback = "✨ Stillingen er fuldført i fuld harmoni... skifter roligt videre";
     if (celebrationRemaining <= 0) {
+      if (completedPoses.size >= YOGA_POSES.length) {
+        speakDanish("Hele forløbet er fuldført... tak til dig selv for denne stund. Vi starter roligt forfra.", { interrupt: true });
+        completedPoses = new Set();
+      }
       goToPose((currentPoseIndex + 1) % YOGA_POSES.length);
     }
     return;
@@ -2023,7 +2066,17 @@ function updatePoseTimer(bestPose) {
     return;
   }
 
+  if (sessionPaused) {
+    currentFeedback = "⏸ Pause — tag dig god tid. Tryk mellemrum for at fortsætte";
+    return;
+  }
   const result = targetPose.evaluate(bestPose, metrics);
+  const wasMatchedLastFrame = lastFrameMatched;
+  lastFrameMatched = !!result.matched;
+  if (wasMatchedLastFrame && !result.matched) {
+    // Coach quickly (about 1s) after slipping out of green
+    lastHintSpokenAt = Math.min(lastHintSpokenAt, millis() - 3800);
+  }
   currentFeedback = result.hint;
   currentGuidelines = result.guidelines || [];
   currentLimbStates = result.limbStates || {
@@ -2043,7 +2096,7 @@ function updatePoseTimer(bestPose) {
       matchStartAnnounced = true;
       playWellnessChime("soft");
       speakDanish(
-        "Smukt... alle linjer er grønne. Træk vejret roligt og hold stillingen i 15 sekunder.",
+        `Smukt... alle linjer er grønne. Træk vejret roligt og bliv her i ${HOLD_TARGET_SECONDS} sekunder.`,
         { interrupt: true }
       );
     }
@@ -2053,6 +2106,17 @@ function updatePoseTimer(bestPose) {
       speakDanish("Du er halvvejs... sænk skuldrene og mærk roen i åndedrættet.", {
         interrupt: false,
       });
+    }
+
+    if (
+      HOLD_TARGET_SECONDS > 20 &&
+      halfTimeAnnounced &&
+      now - lastBreathCueAt > 9000 &&
+      !isSpeaking &&
+      holdSeconds < HOLD_TARGET_SECONDS - 4
+    ) {
+      lastBreathCueAt = now;
+      speakDanish(nextBreathCue());
     }
 
     if (holdSeconds >= HOLD_TARGET_SECONDS) {
@@ -2078,13 +2142,13 @@ function updatePoseTimer(bestPose) {
       );
 
       // Automatic directional voice coaching to guide user from Red/Orange to Green
-      if (now - lastHintSpokenAt > 6200 && !isSpeaking) {
+      if (now - lastHintSpokenAt > 4800 && !isSpeaking) {
         const orangeGuide = currentGuidelines.find((g) => g.state === "orange");
         const redGuide = currentGuidelines.find((g) => g.state === "red");
         const targetGuide = orangeGuide || redGuide;
         if (targetGuide && targetGuide.voiceHint) {
           lastHintSpokenAt = now;
-          speakDanish(targetGuide.voiceHint, { interrupt: false });
+          speakDanish(wellnessPhrase(targetGuide.voiceHint), { interrupt: false });
         }
       }
     }
@@ -2115,9 +2179,9 @@ function draw() {
   fill(230, 250, 238);
   textSize(16);
   textAlign(LEFT, CENTER);
-  text("🌿 Mindful Senior Yoga", pad + 16, 12 + topBarH * 0.5);
+  text("🌿 Ai-fit", pad + 16, 12 + topBarH * 0.5);
 
-  let btnX = pad + 215;
+  let btnX = pad + 110;
   const btnY = 20;
   const btnH = 36;
 
@@ -2343,7 +2407,7 @@ function draw() {
   fill(175, 220, 195);
   textSize(12.5);
   text(
-    `Øvelse ${currentPoseIndex + 1} af ${YOGA_POSES.length}  •  Skift med ← / →`,
+    `${MODES[currentModeIndex].label} • Øvelse ${currentPoseIndex + 1} af ${YOGA_POSES.length} • Fuldført ${completedPoses.size}`,
     18,
     42
   );
@@ -2387,7 +2451,15 @@ function draw() {
   fill(248, 252, 249);
   rect(imgBoxX, imgBoxY, imgBoxW, imgBoxH, 12);
 
-  const cropImg = poseCropImages[currentPoseIndex];
+  const cropImg = targetPose.cropImg;
+  if (!cropImg && targetPose.emoji) {
+    textAlign(CENTER, CENTER);
+    textSize(64);
+    text(targetPose.emoji, imgBoxX + imgBoxW * 0.5, imgBoxY + imgBoxH * 0.5 - 10);
+    fill(60, 110, 85);
+    textSize(11);
+    text(targetPose.subtitle || "", imgBoxX + 6, imgBoxY + imgBoxH - 30, imgBoxW - 12, 26);
+  }
   if (cropImg) {
     const scale = Math.min(
       (imgBoxW - 14) / cropImg.width,
@@ -2427,7 +2499,7 @@ function draw() {
       : [
           { label: "Træd ind foran kameraet", state: "red" },
           { label: "Følg kropslinjerne mod den grønne zone", state: "red" },
-          { label: "Hold stillingen roligt i 15 sekunder", state: "red" },
+          { label: `Hold stillingen roligt i ${HOLD_TARGET_SECONDS} sekunder`, state: "red" },
         ];
 
   for (let i = 0; i < guidelinesToShow.length; i++) {
@@ -2489,5 +2561,76 @@ function draw() {
     timerBoxY + 21
   );
 
+  pop();
+
+  drawSessionBar(pad, contentY + camH + 16);
+}
+
+// ---------------- Bottom session bar: mode, strictness, hold time, pause, sound ----------------
+function drawSessionBar(pad, y) {
+  const h = 40;
+  push();
+  fill(22, 46, 36, 215);
+  stroke(140, 225, 180, 65);
+  strokeWeight(1);
+  rect(pad, y, width - pad * 2, (h + 6) * (width < 1500 ? 2 : 1) + 10, 14);
+
+  let x = pad + 12;
+  let by = y + 8;
+  const wrap = (w) => {
+    if (x + w > width - pad - 12) {
+      x = pad + 12;
+      by += h + 6;
+    }
+  };
+  const btn = (label, active, onClick, tone) => {
+    textSize(12.5);
+    const w = textWidth(label) + 20;
+    wrap(w);
+    fill(active ? color(68, 168, 122) : tone || color(32, 62, 48, 200));
+    stroke(active ? color(155, 245, 200) : color(140, 210, 175, 50));
+    strokeWeight(1);
+    rect(x, by, w, h, 10);
+    noStroke();
+    fill(245, 255, 250);
+    textAlign(CENTER, CENTER);
+    text(label, x + w * 0.5, by + h * 0.5);
+    uiButtons.push({ x, y: by, w, h, onClick });
+    x += w + 6;
+  };
+  const sep = (label) => {
+    noStroke();
+    fill(175, 220, 195);
+    textSize(11.5);
+    textAlign(LEFT, CENTER);
+    wrap(textWidth(label) + 60);
+    text(label, x + 4, by + h * 0.5);
+    x += textWidth(label) + 12;
+  };
+
+  sep("Hvor gør det ondt?");
+  MODES.forEach((m, i) => btn(m.label, currentModeIndex === i, () => setMode(i)));
+  x += 10;
+  sep("Præcision");
+  STRICTNESS_LEVELS.forEach((l, i) =>
+    btn(l.label, strictnessIndex === i, () => (strictnessIndex = i))
+  );
+  x += 10;
+  sep("Hold");
+  HOLD_OPTIONS.forEach((sec, i) =>
+    btn(`${sec}s`, holdOptionIndex === i, () => {
+      holdOptionIndex = i;
+      HOLD_TARGET_SECONDS = sec;
+      holdSeconds = Math.min(holdSeconds, sec);
+    })
+  );
+  x += 10;
+  btn(sessionPaused ? "▶ Fortsæt" : "⏸ Pause", sessionPaused, togglePause);
+  btn(ambientEnabled ? "🎵 Rolig lyd: TIL" : "🎵 Rolig lyd", ambientEnabled, () =>
+    setAmbient(!ambientEnabled)
+  );
+  btn(showCameraGuides ? "◎ Mål: TIL" : "◎ Mål: FRA", showCameraGuides, () => {
+    showCameraGuides = !showCameraGuides;
+  });
   pop();
 }
