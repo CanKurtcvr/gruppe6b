@@ -1,0 +1,8 @@
+[
+{"capability":"code","source":"p5.js sketch (index.html, Main.js) + Node server","outcome":"migrate","status":"done","next_action":"none"},
+{"capability":"assets","source":"yoga reference image","outcome":"migrate","status":"done","next_action":"none"},
+{"capability":"public endpoints","source":"/api/speak, /api/stop-speak, /api/tts","outcome":"migrate to /api/public/*; server-side macOS playback replaced by browser playback","status":"done","next_action":"none"},
+{"capability":"external providers","source":"Google Translate TTS, Portal/p5/MediaPipe CDNs","outcome":"preserve","status":"done","next_action":"none"},
+{"capability":"schema/records/auth","source":"none (ruvector.db and .swarm are AI-agent tooling, not app data)","outcome":"not applicable","status":"verified","next_action":"none"},
+{"capability":"dev tooling","source":"live-reload, .claude/.agents/.swarm configs","outcome":"dropped","status":"accepted","next_action":"none"}
+]

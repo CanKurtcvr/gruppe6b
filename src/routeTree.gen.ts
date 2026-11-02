@@ -10,33 +10,69 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicSpeakRouteImport } from './routes/api/public/speak'
+import { Route as ApiPublicStopSpeakRouteImport } from './routes/api/public/stop-speak'
+import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSpeakRoute = ApiPublicSpeakRouteImport.update({
+  id: '/api/public/speak',
+  path: '/api/public/speak',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicStopSpeakRoute = ApiPublicStopSpeakRouteImport.update({
+  id: '/api/public/stop-speak',
+  path: '/api/public/stop-speak',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
+  id: '/api/public/tts',
+  path: '/api/public/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/speak': typeof ApiPublicSpeakRoute
+  '/api/public/stop-speak': typeof ApiPublicStopSpeakRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/speak': typeof ApiPublicSpeakRoute
+  '/api/public/stop-speak': typeof ApiPublicStopSpeakRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/speak': typeof ApiPublicSpeakRoute
+  '/api/public/stop-speak': typeof ApiPublicStopSpeakRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/api/public/speak' | '/api/public/stop-speak' | '/api/public/tts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/speak' | '/api/public/stop-speak' | '/api/public/tts'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/public/speak'
+    | '/api/public/stop-speak'
+    | '/api/public/tts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicSpeakRoute: typeof ApiPublicSpeakRoute
+  ApiPublicStopSpeakRoute: typeof ApiPublicStopSpeakRoute
+  ApiPublicTtsRoute: typeof ApiPublicTtsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +84,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/speak': {
+      id: '/api/public/speak'
+      path: '/api/public/speak'
+      fullPath: '/api/public/speak'
+      preLoaderRoute: typeof ApiPublicSpeakRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/stop-speak': {
+      id: '/api/public/stop-speak'
+      path: '/api/public/stop-speak'
+      fullPath: '/api/public/stop-speak'
+      preLoaderRoute: typeof ApiPublicStopSpeakRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/tts': {
+      id: '/api/public/tts'
+      path: '/api/public/tts'
+      fullPath: '/api/public/tts'
+      preLoaderRoute: typeof ApiPublicTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicSpeakRoute: ApiPublicSpeakRoute,
+  ApiPublicStopSpeakRoute: ApiPublicStopSpeakRoute,
+  ApiPublicTtsRoute: ApiPublicTtsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
