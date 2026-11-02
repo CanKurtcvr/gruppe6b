@@ -142,3 +142,16 @@
     color: var(--color-foreground);
   }
 }
+
+:root {
+  --intro-bg: linear-gradient(135deg, oklch(0.27 0.04 160) 0%, oklch(0.36 0.06 160) 50%, oklch(0.25 0.04 160) 100%);
+  --intro-fg: oklch(0.96 0.02 160);
+  --intro-muted: oklch(0.82 0.04 160);
+  --intro-card: oklch(1 0 0 / 0.07);
+  --intro-accent: oklch(0.68 0.12 155);
+}
+@utility bg-intro { background: var(--intro-bg); }
+@utility text-intro { color: var(--intro-fg); }
+@utility text-intro-muted { color: var(--intro-muted); }
+@utility bg-intro-card { background: var(--intro-card); }
+@utility bg-intro-accent { background: var(--intro-accent); }

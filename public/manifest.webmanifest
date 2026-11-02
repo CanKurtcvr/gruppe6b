@@ -1,0 +1,15 @@
+{
+  "name": "Hjemme Øvelser",
+  "short_name": "Hjemme Øvelser",
+  "description": "Yoga og udstrækning hjemme med live feedback",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#163026",
+  "theme_color": "#163026",
+  "lang": "da",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

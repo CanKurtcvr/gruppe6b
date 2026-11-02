@@ -57,6 +57,34 @@ let personLayerCanvas = null;
 let personLayerCtx = null;
 
 // Calm background themes (Default: Green Wellness Gradient)
+const CAM_BGS = [
+  { id: "none", label: "Kamera", colors: null },
+  { id: "green", label: "Grøn", colors: ["#1c3f32", "#2b5e4a", "#18352a"] },
+  { id: "ocean", label: "Hav", colors: ["#0b3d5c", "#2a8fb8", "#9fe0ea"] },
+  { id: "sunset", label: "Solnedgang", colors: ["#3b1f4a", "#c4566b", "#f6b26b"] },
+  { id: "lavender", label: "Lavendel", colors: ["#3d3466", "#8a7cc8", "#e2d9f3"] },
+  { id: "sand", label: "Sand", colors: ["#6b5a45", "#c9b38f", "#f3ead8"] },
+  { id: "night", label: "Nat", colors: ["#05070f", "#16223f", "#2c3e6b"] },
+];
+let camBgIndex = 1;
+let showSettings = false;
+function drawCamBackground(x, y, w, h, t) {
+  const b = CAM_BGS[camBgIndex];
+  if (!b || !b.colors || b.id === "green") return drawGreenWellnessGradientRect(x, y, w, h, t);
+  const ctx = drawingContext;
+  ctx.save();
+  const g = ctx.createLinearGradient(x, y, x + w * 0.6, y + h);
+  b.colors.forEach((c, k) => g.addColorStop(k / (b.colors.length - 1), c));
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+  const ax = x + w * 0.5 + Math.sin(t * 0.6) * 25, ay = y + h * 0.4;
+  const r = ctx.createRadialGradient(ax, ay, 20, ax, ay, Math.max(w, h) * 0.6);
+  r.addColorStop(0, "rgba(255,255,255,0.16)");
+  r.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = r;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
 const BACKGROUNDS = [
   { id: "wellness_green", label: "🌿 Grøn Wellness Gradient" },
   { id: "beach", label: "🏖️ Rolig Strand" },
@@ -2238,120 +2266,64 @@ function draw() {
   const pad = 20;
   const topBarH = 52;
 
-  // --- Top Wellness Control Bar ---
+  // --- Clean top bar ---
   push();
-  fill(22, 46, 36, 210);
-  stroke(140, 225, 180, 65);
-  strokeWeight(1);
-  rect(pad, 12, width - pad * 2, topBarH, 14);
-
   noStroke();
   fill(230, 250, 238);
-  textSize(16);
+  textSize(20);
+  textStyle(BOLD);
   textAlign(LEFT, CENTER);
-  text("🌿 Ai-fit", pad + 16, 12 + topBarH * 0.5);
-
-  let btnX = pad + 110;
+  text("Hjemme Øvelser", pad + 4, 12 + topBarH * 0.5);
+  let btnX = pad + 4 + textWidth("Hjemme Øvelser") + 28;
+  textStyle(NORMAL);
   const btnY = 20;
   const btnH = 36;
-
-  for (let i = 0; i < BACKGROUNDS.length; i++) {
-    const bg = BACKGROUNDS[i];
-    textSize(12.5);
-    const bw = textWidth(bg.label) + 22;
-    const isActive = currentBgIndex === i;
-
-    fill(isActive ? color(68, 168, 122) : color(32, 62, 48, 200));
-    stroke(isActive ? color(155, 245, 200) : color(140, 210, 175, 50));
-    strokeWeight(1);
-    rect(btnX, btnY, bw, btnH, 10);
-
+  textSize(12);
+  fill(175, 220, 195);
+  text("Baggrund", btnX, 12 + topBarH * 0.5);
+  btnX += textWidth("Baggrund") + 10;
+  for (let i = 0; i < CAM_BGS.length; i++) {
+    const b = CAM_BGS[i];
+    const cx = btnX + 16, cy = btnY + btnH / 2;
+    const ctx = drawingContext;
+    if (b.colors) {
+      const g = ctx.createLinearGradient(cx - 14, cy - 14, cx + 14, cy + 14);
+      b.colors.forEach((c, k) => g.addColorStop(k / (b.colors.length - 1), c));
+      ctx.fillStyle = g;
+    } else ctx.fillStyle = "#3a4a44";
+    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill();
+    if (!b.colors) { fill(255); textAlign(CENTER, CENTER); textSize(13); text("📷", cx, cy + 1); }
+    noFill();
+    stroke(camBgIndex === i ? color(255) : color(255, 255, 255, 40));
+    strokeWeight(camBgIndex === i ? 2.5 : 1);
+    circle(cx, cy, 34);
     noStroke();
-    fill(245, 255, 250);
-    textAlign(CENTER, CENTER);
-    text(bg.label, btnX + bw * 0.5, btnY + btnH * 0.5);
-
     const idx = i;
-    uiButtons.push({
-      x: btnX,
-      y: btnY,
-      w: bw,
-      h: btnH,
-      onClick: () => {
-        currentBgIndex = idx;
-      },
-    });
-    btnX += bw + 8;
+    uiButtons.push({ x: cx - 17, y: cy - 17, w: 34, h: 34, onClick: () => {
+      camBgIndex = idx;
+      removeBackgroundEnabled = !!CAM_BGS[idx].colors;
+    } });
+    btnX += 40;
   }
-
-  // Toggle Background Removal Button
-  const bgRemLabel = removeBackgroundEnabled
-    ? "✨ Grøn Baggrundsfjernelse: TIL"
-    : "📷 Normalt Kamera";
-  textSize(12.5);
-  const bgRemW = textWidth(bgRemLabel) + 22;
-  fill(removeBackgroundEnabled ? color(55, 150, 108) : color(45, 70, 58));
-  stroke(155, 240, 195, 80);
-  rect(btnX, btnY, bgRemW, btnH, 10);
-  noStroke();
-  fill(255);
-  textAlign(CENTER, CENTER);
-  text(bgRemLabel, btnX + bgRemW * 0.5, btnY + btnH * 0.5);
-  uiButtons.push({
-    x: btnX,
-    y: btnY,
-    w: bgRemW,
-    h: btnH,
-    onClick: () => {
-      removeBackgroundEnabled = !removeBackgroundEnabled;
-    },
+  const icon = (x, label, active, onClick) => {
+    textSize(13);
+    const w = textWidth(label) + 22;
+    fill(active ? color(68, 168, 122) : color(255, 255, 255, 22));
+    rect(x - w, btnY, w, btnH, 18);
+    fill(255);
+    textAlign(CENTER, CENTER);
+    text(label, x - w / 2, btnY + btnH / 2);
+    uiButtons.push({ x: x - w, y: btnY, w, h: btnH, onClick });
+    return x - w - 8;
+  };
+  let rx = width - pad;
+  rx = icon(rx, "⚙ Indstillinger", showSettings, () => (showSettings = !showSettings));
+  rx = icon(rx, voiceEnabled ? "🔊" : "🔇", voiceEnabled, () => {
+    voiceEnabled = !voiceEnabled;
+    if (!voiceEnabled) stopDanishVoice();
+    else announceCurrentPose();
   });
-
-  // Right-side Voiceover Controls
-  const speakBtnW = 148;
-  const muteBtnW = 132;
-  const rightEdge = width - pad - 12;
-
-  const muteX = rightEdge - muteBtnW;
-  fill(voiceEnabled ? color(52, 145, 105) : color(75, 90, 82));
-  rect(muteX, btnY, muteBtnW, btnH, 10);
-  fill(255);
-  textSize(12.5);
-  textAlign(CENTER, CENTER);
-  text(
-    voiceEnabled ? "🔊 Stemme: TIL" : "🔇 Stemme: FRA",
-    muteX + muteBtnW * 0.5,
-    btnY + btnH * 0.5
-  );
-  uiButtons.push({
-    x: muteX,
-    y: btnY,
-    w: muteBtnW,
-    h: btnH,
-    onClick: () => {
-      voiceEnabled = !voiceEnabled;
-      if (!voiceEnabled) stopDanishVoice();
-      else announceCurrentPose();
-    },
-  });
-
-  const speakX = muteX - speakBtnW - 8;
-  fill(38, 72, 56, 225);
-  stroke(150, 230, 185, 70);
-  rect(speakX, btnY, speakBtnW, btnH, 10);
-  noStroke();
-  fill(255);
-  text("🗣️ Gentag guide", speakX + speakBtnW * 0.5, btnY + btnH * 0.5);
-  uiButtons.push({
-    x: speakX,
-    y: btnY,
-    w: speakBtnW,
-    h: btnH,
-    onClick: () => {
-      voiceEnabled = true;
-      announceCurrentPose();
-    },
-  });
+  rx = icon(rx, "🗣 Gentag", false, () => { voiceEnabled = true; announceCurrentPose(); });
   pop();
 
   // --- Main Content Area: Segmented Wellness Camera (Left) + Guidelines (Right) ---
@@ -2374,8 +2346,7 @@ function draw() {
   drawingContext.clip();
 
   if (removeBackgroundEnabled) {
-    // 1. Draw the calm Green Wellness Gradient inside the camera canvas
-    drawGreenWellnessGradientRect(0, 0, camW, camH, t);
+    drawCamBackground(0, 0, camW, camH, t);
 
     // 2. Draw segmented person silhouette (background removed) if ready, else soft-blended camera
     if (segmentationReady && personLayerCanvas) {
@@ -2643,7 +2614,7 @@ function drawSessionBar(pad, y) {
   fill(22, 46, 36, 215);
   stroke(140, 225, 180, 65);
   strokeWeight(1);
-  rect(pad, y, width - pad * 2, (h + 6) * (width < 1500 ? 2 : 1) + 10, 14);
+  rect(pad, y, width - pad * 2, (h + 6) * (showSettings && width < 1500 ? 2 : 1) + 10, 14);
 
   let x = pad + 12;
   let by = y + 8;
@@ -2680,6 +2651,7 @@ function drawSessionBar(pad, y) {
 
   sep("Hvor gør det ondt?");
   MODES.forEach((m, i) => btn(m.label, currentModeIndex === i, () => setMode(i)));
+  if (!showSettings) { pop(); return; }
   x += 10;
   sep("Præcision");
   STRICTNESS_LEVELS.forEach((l, i) =>
