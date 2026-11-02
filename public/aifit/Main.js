@@ -1669,6 +1669,18 @@ async function setup() {
     console.warn("Could not load yoga reference image:", err);
   }
 
+  // Load stretch reference illustrations (same flat style as the yoga sheet)
+  await Promise.all(
+    STRETCH_LIBRARY.map(async (s) => {
+      if (!s.img) return;
+      try {
+        s.cropImg = await loadImage(s.img);
+      } catch (err) {
+        console.warn("Could not load stretch image:", s.img, err);
+      }
+    })
+  );
+
   await loadScript("portal/bodyPose.js");
 
   cam = await setupWebcamera(false, 640, 480, true);

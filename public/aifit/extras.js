@@ -254,6 +254,7 @@ const STRETCH_LIBRARY = [
     id: "s-neck-left",
     areas: ["neck"],
     emoji: "🙇",
+    img: "stretch-neck-left.jpg",
     name: "Nakkestræk mod venstre",
     subtitle: "Blødgør nakke & skuldre",
     instruction:
@@ -266,6 +267,7 @@ const STRETCH_LIBRARY = [
     id: "s-neck-right",
     areas: ["neck"],
     emoji: "🙇",
+    img: "stretch-neck-right.jpg",
     name: "Nakkestræk mod højre",
     subtitle: "Blødgør nakke & skuldre",
     instruction:
@@ -278,6 +280,7 @@ const STRETCH_LIBRARY = [
     id: "s-cross-right",
     areas: ["shoulders", "neck"],
     emoji: "🤗",
+    img: "stretch-cross-right.jpg",
     name: "Armkryds — højre arm",
     subtitle: "Skulderens bagside",
     instruction:
@@ -304,6 +307,7 @@ const STRETCH_LIBRARY = [
     id: "s-cross-left",
     areas: ["shoulders", "neck"],
     emoji: "🤗",
+    img: "stretch-cross-left.jpg",
     name: "Armkryds — venstre arm",
     subtitle: "Skulderens bagside",
     instruction:
@@ -330,6 +334,7 @@ const STRETCH_LIBRARY = [
     id: "s-t-open",
     areas: ["shoulders", "back"],
     emoji: "🕊️",
+    img: "stretch-t-open.jpg",
     name: "Bryståbner (arme ud til siden)",
     subtitle: "Åbner bryst & øvre ryg",
     instruction:
@@ -368,6 +373,7 @@ const STRETCH_LIBRARY = [
     id: "s-overhead",
     areas: ["shoulders", "back"],
     emoji: "🙆",
+    img: "stretch-overhead.jpg",
     name: "Stræk mod himlen",
     subtitle: "Forlænger ryg & skuldre",
     instruction:
@@ -400,6 +406,7 @@ const STRETCH_LIBRARY = [
     id: "s-side-left",
     areas: ["back"],
     emoji: "🌙",
+    img: "stretch-side-left.jpg",
     name: "Sidebøjning mod venstre",
     subtitle: "Lænd & flanke",
     instruction:
@@ -426,6 +433,7 @@ const STRETCH_LIBRARY = [
     id: "s-side-right",
     areas: ["back"],
     emoji: "🌙",
+    img: "stretch-side-right.jpg",
     name: "Sidebøjning mod højre",
     subtitle: "Lænd & flanke",
     instruction:
@@ -452,6 +460,7 @@ const STRETCH_LIBRARY = [
     id: "s-knee-left",
     areas: ["hips"],
     emoji: "🦵",
+    img: "stretch-knee-left.jpg",
     name: "Knæløft — venstre",
     subtitle: "Hofte & lår (støt dig gerne til en stol)",
     instruction:
@@ -464,6 +473,7 @@ const STRETCH_LIBRARY = [
     id: "s-knee-right",
     areas: ["hips"],
     emoji: "🦵",
+    img: "stretch-knee-right.jpg",
     name: "Knæløft — højre",
     subtitle: "Hofte & lår (støt dig gerne til en stol)",
     instruction:
