@@ -8,7 +8,7 @@ const env = runInNewContext(`${source}\n({ buildSession, PROGRAMS, STRETCH_LIBRA
 
 describe("Færdige programmer", () => {
   it("bruger kun øvelser, der findes i biblioteket", () => {
-    const ids = new Set(env.STRETCH_LIBRARY.map((s) => s.id));
+    const ids = new Set<string>(env.STRETCH_LIBRARY.map((s: { id: string }) => s.id));
     for (const prog of env.PROGRAMS) {
       for (const id of prog.exerciseIds) expect(ids.has(id), `${prog.id} mangler ${id}`).toBe(true);
     }
@@ -18,7 +18,7 @@ describe("Færdige programmer", () => {
     for (const prog of env.PROGRAMS) {
       env.setCurrentProgram(prog.id);
       const session = env.buildSession("yoga", []);
-      expect(session.map((s) => s.id)).toEqual(prog.exerciseIds);
+      expect(session.map((s: { id: string }) => s.id)).toEqual(prog.exerciseIds);
       env.setCurrentProgram(null);
     }
   });
@@ -29,7 +29,7 @@ describe("Færdige programmer", () => {
       env.setCurrentProgram(prog.id);
       const session = env.buildSession("yoga", []);
       expect(session.length).toBe(prog.exerciseIds.length);
-      expect(session.every((s) => !s.posture || s.posture === "any" || s.posture === "sit")).toBe(true);
+      expect(session.every((s: { posture?: string }) => !s.posture || s.posture === "any" || s.posture === "sit")).toBe(true);
       env.setCurrentProgram(null);
     }
   });
