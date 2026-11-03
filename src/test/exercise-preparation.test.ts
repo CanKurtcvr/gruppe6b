@@ -3,7 +3,7 @@ import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync("public/aifit/extras.js", "utf8");
-const context = { URLSearchParams, window: { location: { search: "" } } };
+const context = { URLSearchParams, location: { search: "" }, window: { location: { search: "" } } };
 const create = runInNewContext(`${source}\ncreateExercisePreparation;`, context);
 
 describe("Exercise preparation", () => {
