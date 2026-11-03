@@ -2406,7 +2406,7 @@ function draw() {
   rect(0, 0, camW, camH, 22);
 
   // Big feedback + progress at the bottom of the camera
-  const fbH = 34 * big + 46;
+  const fbH = 60 * big + 50;
   const fbY = camH - fbH - 16;
   noStroke();
   fill(pc(PAL.plum, 215));
