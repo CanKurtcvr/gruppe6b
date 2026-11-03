@@ -3,9 +3,9 @@
 
 // Strictness: multiplies every green/orange tolerance. Lower = stricter.
 const STRICTNESS_LEVELS = [
-  { id: "gentle", label: "Blid", factor: 1.35 },
-  { id: "normal", label: "Mellem", factor: 1.05 },
-  { id: "strict", label: "Striks", factor: 0.75 },
+  { id: "gentle", label: "Blid", factor: 1.7 },
+  { id: "normal", label: "Mellem", factor: 1.3 },
+  { id: "strict", label: "Striks", factor: 0.95 },
 ];
 let strictnessIndex = 1;
 function strictFactor() {
@@ -215,9 +215,9 @@ function pointCheck({ key, group, part, label, at, green = 0.4, orange = 0.8 }) 
   };
 }
 
-function levelShouldersCheck(label = "Skuldrene i ro og i vater") {
+function levelShouldersCheck(label = "Skuldrene i ro og i vater", loose = false) {
   return (pose, m) => {
-    const state = gradeError(m.shoulderTilt / m.shoulderWidth, 0.12, 0.24);
+    const state = gradeError(m.shoulderTilt / m.shoulderWidth, loose ? 0.25 : 0.12, loose ? 0.45 : 0.24);
     const hint =
       pose.left_shoulder.y < pose.right_shoulder.y
         ? "Lad venstre skulder synke blødt ned, så skuldrene er i vater."
@@ -227,30 +227,19 @@ function levelShouldersCheck(label = "Skuldrene i ro og i vater") {
 }
 
 function headTiltCheck(side) {
-  // side: "left" means left ear toward left shoulder (left eye lower)
+  // Forgiving: any clear sideways head tilt counts (camera mirroring makes direction unreliable).
   return (pose, m) => {
-    const le = pose.left_eye;
-    const re = pose.right_eye;
-    if (!ptOK(le) || !ptOK(re)) {
-      return {
-        group: "torso",
-        state: "red",
-        label: "Hovedet synligt for kameraet",
-        hint: "Vend ansigtet roligt mod kameraet.",
-      };
-    }
-    const tilt = ((side === "left" ? le.y - re.y : re.y - le.y) / m.shoulderWidth);
-    const state = gradeError(Math.max(0, 0.2 - tilt), 0.0, 0.1);
+    const pairs = [[pose.left_ear, pose.right_ear], [pose.left_eye, pose.right_eye]];
+    const pr = pairs.find(([a, b]) => ptOK(a) && ptOK(b));
     const word = side === "left" ? "venstre" : "højre";
-    return {
-      group: "torso",
-      state,
-      label: `Øret blødt ned mod ${word} skulder`,
-      hint:
-        tilt < 0
-          ? `Du vipper den forkerte vej... lad i stedet ${word} øre synke mod ${word} skulder.`
-          : `Lad ${word} øre synke lidt længere ned mod ${word} skulder.`,
-    };
+    if (!pr) {
+      // One ear hidden usually means the head is tilted/turned — accept it.
+      if (ptOK(pose.nose)) return { group: "torso", state: "orange", label: `Øret mod ${word} skulder`, hint: `Lad ${word} øre synke blødt ned mod ${word} skulder.` };
+      return { group: "torso", state: "red", label: "Hovedet synligt for kameraet", hint: "Vend ansigtet roligt mod kameraet." };
+    }
+    const tilt = Math.abs(pr[0].y - pr[1].y) / m.shoulderWidth;
+    const state = tilt >= 0.07 ? "green" : tilt >= 0.035 ? "orange" : "red";
+    return { group: "torso", state, label: `Øret blødt ned mod ${word} skulder`, hint: `Lad ${word} øre synke lidt længere ned mod ${word} skulder.` };
   };
 }
 
@@ -354,7 +343,7 @@ function makeStretch(def) {
         passed: r.state === "green",
         voiceHint: r.hint,
       }));
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const next =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -390,7 +379,7 @@ const STRETCH_LIBRARY = [
       "Sid eller stå rankt. Lad venstre øre synke langsomt ned mod venstre skulder, mens højre skulder bliver tung og afslappet.",
     voiceIntro:
       "Sid eller stå rankt. Lad venstre øre synke langsomt ned mod venstre skulder... og lad højre skulder blive tung.",
-    checks: [headTiltCheck("left"), levelShouldersCheck("Skuldrene bliver nede og i ro")],
+    checks: [headTiltCheck("left"), levelShouldersCheck("Skuldrene bliver nede og i ro", true)],
   }),
   makeStretch({
     id: "s-neck-right",
@@ -403,7 +392,7 @@ const STRETCH_LIBRARY = [
       "Lad højre øre synke langsomt ned mod højre skulder, mens venstre skulder bliver tung og afslappet.",
     voiceIntro:
       "Nu den anden side. Lad højre øre synke langsomt ned mod højre skulder... og slip spændingen i venstre side.",
-    checks: [headTiltCheck("right"), levelShouldersCheck("Skuldrene bliver nede og i ro")],
+    checks: [headTiltCheck("right"), levelShouldersCheck("Skuldrene bliver nede og i ro", true)],
   }),
   makeStretch({
     id: "s-cross-right",

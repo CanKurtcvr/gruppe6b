@@ -81,16 +81,9 @@ let personLayerCtx = null;
 
 // Calm background themes (Default: Green Wellness Gradient)
 const CAM_BGS = [
-  { id: "none", label: "Kamera", colors: null },
-  { id: "green", label: "Lavendel", colors: ["#2e2142", "#5b4380", "#8a5f8f"] },
-  { id: "rose", label: "Rosa", colors: ["#4a2a4a", "#c27b9e", "#f6d0de"] },
-  { id: "ocean", label: "Hav", colors: ["#0b3d5c", "#2a8fb8", "#9fe0ea"] },
-  { id: "sunset", label: "Solnedgang", colors: ["#3b1f4a", "#c4566b", "#f6b26b"] },
-  { id: "lavender", label: "Lilla", colors: ["#3d3466", "#8a7cc8", "#e2d9f3"] },
-  { id: "sand", label: "Sand", colors: ["#6b5a45", "#c9b38f", "#f3ead8"] },
-  { id: "night", label: "Nat", colors: ["#05070f", "#16223f", "#2c3e6b"] },
-  { id: "forest", label: "Skov", icon: "🌳", music: "forest", video: "/__l5e/assets-v1/fcfb255f-d9a8-431b-aa34-6d225c87dfef/forest-bg.mp4", colors: ["#1f3b24", "#4f7a3c", "#a8c97f"] },
-  { id: "beach", label: "Strand", icon: "🌊", music: "beach", video: "/__l5e/assets-v1/c9dafba9-12f9-4406-b1cb-86456c7865a4/beach-bg.mp4", colors: ["#2a8fb8", "#9fe0ea", "#f3e2c0"] },
+  { id: "none", label: "Ingen", colors: null },
+  { id: "forest", label: "Natur", icon: "🌳", music: "forest", video: "/__l5e/assets-v1/fcfb255f-d9a8-431b-aa34-6d225c87dfef/forest-bg.mp4", colors: ["#1f3b24", "#4f7a3c", "#a8c97f"] },
+  { id: "beach", label: "Havet", icon: "🌊", music: "beach", video: "/__l5e/assets-v1/c9dafba9-12f9-4406-b1cb-86456c7865a4/beach-bg.mp4", colors: ["#2a8fb8", "#9fe0ea", "#f3e2c0"] },
 ];
 let camBgIndex = 0;
 let showSettings = false;
@@ -594,7 +587,7 @@ const YOGA_LIBRARY = [
         rightLeg: legState,
       };
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const firstNotGreen =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -688,7 +681,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -802,7 +795,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -896,7 +889,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -996,7 +989,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -1093,7 +1086,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -1183,7 +1176,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -1283,7 +1276,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -1373,7 +1366,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -1475,7 +1468,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -1563,7 +1556,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
@@ -1661,7 +1654,7 @@ const YOGA_LIBRARY = [
         },
       ];
 
-      const allGreen = guidelines.every((g) => g.state === "green");
+      const allGreen = guidelines.every((g) => g.state !== "red");
       const nextFix =
         guidelines.find((g) => g.state === "orange") ||
         guidelines.find((g) => g.state === "red");
