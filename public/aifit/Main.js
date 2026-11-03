@@ -2512,7 +2512,9 @@ function draw() {
   fill(pc(PAL.cream));
   textSize(26 * big);
   textAlign(LEFT, CENTER);
-  const fb = celebrationRemaining > 0 ? "✨ Flot! Videre til næste" : currentFeedback;
+  const fb = sessionSummaryActive
+    ? "🌸 Skønt klaret... hvile nu"
+    : celebrationRemaining > 0 ? "✨ Flot! Videre til næste" : currentFeedback;
   if (!hideText || fb.startsWith("📏") || /^[⬅➡]/.test(fb)) text(fb.length > 70 ? fb.slice(0, 68) + "…" : fb, 32, fbY + (fbH - 26) / 2 + 4, camW - 64 - 110 * big);
   textAlign(RIGHT, CENTER);
   textStyle(BOLD);
@@ -2653,7 +2655,7 @@ function draw() {
     text(`Du fuldførte ${sessionSummaryData.count} øvelser på ca. ${sessionSummaryData.mins} minutter.`, width / 2, py + 118);
     fill(pc(PAL.cream));
     textSize(20);
-    text(sessionSummaryData.tip, width / 2, py + 162, pw - 80);
+    text(sessionSummaryData.tip, px + 50, py + 162, pw - 100);
     fill(pc(PAL.rose));
     rect(px + pw / 2 - 190, py + ph - 116, 170, 56, 28);
     rect(px + pw / 2 + 20, py + ph - 116, 170, 56, 28);
