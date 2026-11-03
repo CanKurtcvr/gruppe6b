@@ -2641,9 +2641,9 @@ function draw() {
     push();
     noStroke();
     const pw = Math.min(width - pad * 2, 640);
-    const ph = Math.min(height * 0.6, 440);
+    const ph = Math.min(height * 0.55, 400);
     const px = (width - pw) / 2;
-    const py = (height - ph) / 2;
+    const py = (height - ph) / 2 - 48;
     fill(pc(PAL.plum, 238));
     rect(px, py, pw, ph, 30);
     fill(pc(PAL.cream));
