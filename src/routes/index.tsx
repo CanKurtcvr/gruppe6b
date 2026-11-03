@@ -32,11 +32,12 @@ function Index() {
   const [started, setStarted] = useState(false);
   const [level, setLevel] = useState(2);
   const [pos, setPos] = useState<"sit" | "stand">("stand");
+  const [prog, setProg] = useState<string | null>(null);
 
   if (started) {
     return (
       <iframe
-        src={`/aifit/index.html?level=${level}&pos=${pos}`}
+        src={`/aifit/index.html?level=${level}&pos=${pos}${prog ? `&prog=${prog}` : ""}`}
         title="Hjemme Øvelser"
         allow="camera; microphone; autoplay; fullscreen"
         className="fixed inset-0 h-screen w-screen border-0 bg-background"
@@ -92,6 +93,27 @@ function Index() {
               onClick={() => setPos(id)}
               aria-pressed={pos === id}
               className={`rounded-2xl px-6 py-4 text-left text-lg transition ${pos === id ? "bg-intro-accent text-foreground" : "bg-intro-card"}`}
+            >
+              <div className="font-medium">{label}</div>
+              <div className="text-sm opacity-80">{sub}</div>
+            </button>
+          ))}
+        </div>
+        <h2 className="text-xl font-medium mt-6">Færdigt program?</h2>
+        <div className="flex flex-wrap gap-3 mt-3">
+          {(
+            [
+              [null, "Fri træning", "Vælg selv undervejs"],
+              ["morgen", "🌅 Morgenrutine", "Væk kroppen blidt"],
+              ["aften", "🌙 Aftenro", "Rolig afrunding på dagen"],
+              ["skuldre", "💪 Skuldre & nakke", "Løs spændinger i nakke og skuldre"],
+            ] as const
+          ).map(([id, label, sub]) => (
+            <button
+              key={id ?? "free"}
+              onClick={() => setProg(id as string | null)}
+              aria-pressed={prog === id}
+              className={`rounded-2xl px-6 py-4 text-left text-lg transition ${prog === id ? "bg-intro-accent text-foreground" : "bg-intro-card"}`}
             >
               <div className="font-medium">{label}</div>
               <div className="text-sm opacity-80">{sub}</div>
