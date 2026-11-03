@@ -297,10 +297,13 @@ function legExtendCheck(side) {
   return (pose, m) => {
     const knee = pose[`${side}_knee`], ankle = pose[`${side}_ankle`];
     const word = side === "left" ? "venstre" : "højre";
+    const wordCap = word[0].toUpperCase() + word.slice(1);
     const group = side === "left" ? "leftLeg" : "rightLeg";
-    if (!ptOK(knee) || !ptOK(ankle)) return { group, state: "red", label: `Stræk ${word} ben frem`, hint: "Ryk stolen lidt tilbage, så hele benet kan ses." };
+    // Siddende øvelse: foden må gerne være udenfor billedet — kun knæet skal ses.
+    if (!ptOK(knee)) return { group, state: "red", label: `Stræk ${word} ben frem`, hint: "Ryk stolen lidt tilbage, så knæet kan ses." };
+    if (!ptOK(ankle)) return { group, state: "green", label: `${wordCap} ben strakt frem`, hint: `Smukt... stræk ${word} ben roligt frem. Foden må gerne være udenfor billedet.` };
     const gap = (ankle.y - knee.y) / m.torsoLength;
-    return { group, state: gradeError(Math.max(0, gap - 0.18), 0.0, 0.3), label: `${word[0].toUpperCase() + word.slice(1)} fod løftet til knæhøjde`, hint: `Løft ${word} fod lidt højere... stræk benet roligt frem.` };
+    return { group, state: gradeError(Math.max(0, gap - 0.18), 0.0, 0.3), label: `${wordCap} fod løftet til knæhøjde`, hint: `Løft ${word} fod lidt højere... stræk benet roligt frem.` };
   };
 }
 function feetWideCheck(ratio, label = "Fødderne godt fra hinanden") {

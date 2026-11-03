@@ -52,6 +52,9 @@ function getDistanceState(pose, m) {
     if (cx > CAM_W - margin) return "edgeRight";
   }
   if (closeUpMode) return "ok";
+  // Siddende øvelser: fødderne skal ikke være med i billedet.
+  const curPose = YOGA_POSES[currentPoseIndex];
+  if (currentPosture === "sit" || (curPose && curPose.posture === "sit")) return "ok";
   const ankleSeen = (p) => ptOK(p, 0.3) && p.y < CAM_H * (1 - Math.max(0, lvl.edge) * 0.5);
   if (!ankleSeen(pose.left_ankle) && !ankleSeen(pose.right_ankle)) return "close";
   return "ok";
@@ -2179,7 +2182,8 @@ function updatePoseTimer(bestPose) {
     if (nowMs - distanceOkSince > 700) {
       lastDistanceState = "ok";
       playWellnessChime("soft");
-      speakDanish("Perfekt... nu er du i en god afstand. Bliv stående der.", { interrupt: true });
+      const seatedNow = currentPosture === "sit" || ((YOGA_POSES[currentPoseIndex] || {}).posture === "sit");
+      speakDanish(seatedNow ? "Perfekt... nu er du i en god afstand. Bliv siddende der." : "Perfekt... nu er du i en god afstand. Bliv stående der.", { interrupt: true });
       lastHintSpokenAt = nowMs;
     }
   }
