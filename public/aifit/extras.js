@@ -55,8 +55,23 @@ function nextBreathCue() {
   return BREATH_CUES[breathIdx++ % BREATH_CUES.length];
 }
 
-// ---------------- Soft ambient drone (optional calm background sound) ----------------
+// ---------------- Calm background music (generative, Web Audio) ----------------
+// Soft pad chords + gentle bell notes in a pentatonic scale, slow and spacious.
 let ambientNodes = null;
+const DISTANCE_LEVELS = [
+  { label: "Følsom", far: 0.11, edge: 0.06 },
+  { label: "Normal", far: 0.08, edge: 0.03 },
+  { label: "Afslappet", far: 0.05, edge: 0.0 },
+  { label: "Fra", far: 0, edge: -1, off: true },
+];
+let distanceLevelIndex = 1;
+const TEXT_SIZES = [
+  { label: "Stor", s: 1.25 },
+  { label: "Ekstra stor", s: 1.6 },
+  { label: "Ingen tekst", s: 1.25, hide: true },
+];
+let textSizeIndex = 0;
+let musicVolume = 0.5;
 function setAmbient(on) {
   ambientEnabled = on;
   try {
@@ -68,32 +83,60 @@ function setAmbient(on) {
     if (on && !ambientNodes) {
       const master = ctx.createGain();
       master.gain.setValueAtTime(0.0001, ctx.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.035, ctx.currentTime + 3);
-      master.connect(ctx.destination);
-      const oscs = [108, 162, 216.5].map((f, i) => {
-        const o = ctx.createOscillator();
-        o.type = "sine";
-        o.frequency.value = f;
+      master.gain.exponentialRampToValueAtTime(0.25 * musicVolume + 0.0001, ctx.currentTime + 4);
+      // simple echo for space
+      const delay = ctx.createDelay(); delay.delayTime.value = 0.45;
+      const fb = ctx.createGain(); fb.gain.value = 0.35;
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 2200;
+      delay.connect(fb).connect(delay);
+      master.connect(lp).connect(ctx.destination);
+      lp.connect(delay); delay.connect(ctx.destination);
+      const chords = [[220, 277.18, 329.63], [196, 246.94, 293.66], [174.61, 220, 261.63], [196, 246.94, 329.63]];
+      const scale = [440, 493.88, 554.37, 659.25, 739.99, 880];
+      let step = 0;
+      const pad = (freqs, t, dur) => {
+        freqs.forEach((f) => {
+          [f, f * 1.003].forEach((ff) => {
+            const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = ff / 2;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(0.06, t + dur * 0.4);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.1);
+          });
+        });
+      };
+      const bell = (f, t) => {
+        const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = f;
         const g = ctx.createGain();
-        g.gain.value = i === 0 ? 0.6 : 0.25;
-        const lfo = ctx.createOscillator();
-        lfo.frequency.value = 0.06 + i * 0.03;
-        const lfoGain = ctx.createGain();
-        lfoGain.gain.value = 0.18;
-        lfo.connect(lfoGain).connect(g.gain);
-        o.connect(g).connect(master);
-        o.start();
-        lfo.start();
-        return [o, lfo];
-      });
-      ambientNodes = { master, oscs };
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.05, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 3.5);
+        o.connect(g).connect(master); o.start(t); o.stop(t + 3.6);
+      };
+      const tick = () => {
+        const t = ctx.currentTime + 0.1;
+        pad(chords[step % chords.length], t, 9.5);
+        for (let i = 0; i < 3; i++) if (Math.random() < 0.7) bell(scale[Math.floor(Math.random() * scale.length)], t + 1 + i * 2.6 + Math.random());
+        step++;
+      };
+      tick();
+      const timer = setInterval(tick, 8000);
+      ambientNodes = { master, timer };
     } else if (!on && ambientNodes) {
-      const { master, oscs } = ambientNodes;
+      const { master, timer } = ambientNodes;
+      clearInterval(timer);
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), ctx.currentTime);
       master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
-      setTimeout(() => oscs.flat().forEach((o) => o.stop()), 1700);
       ambientNodes = null;
     }
   } catch {}
+}
+function setMusicVolume(v) {
+  musicVolume = v;
+  const ctx = window.__aifitAmbientCtx;
+  if (ambientNodes && ctx) ambientNodes.master.gain.setTargetAtTime(0.25 * v + 0.0001, ctx.currentTime, 0.4);
 }
 
 // ---------------- Generic stretch builder ----------------
