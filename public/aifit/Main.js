@@ -2384,11 +2384,12 @@ function draw() {
   const barH = fs ? 0 : (showSettings ? 4 : 1) * 58 + 14;
   const contentY = pad + topBarH;
   const availH = height - contentY - pad - (fs ? 0 : barH + 12);
-  const camAreaW = (width - pad * 3) * (fs ? 0.7 : 0.64);
+  const sideW = 58; // toggle buttons (skov / hav / musik) left of the camera
+  const camAreaW = (width - pad * 3 - sideW) * (fs ? 0.7 : 0.64);
   const s = Math.max(0.3, Math.min(camAreaW / CAM_W, availH / CAM_H));
   const camW = CAM_W * s;
   const camH = CAM_H * s;
-  const camX = pad;
+  const camX = pad + sideW + 12;
   const camY = contentY + (availH - camH) / 2;
 
   const limbVals = Object.values(currentLimbStates);
