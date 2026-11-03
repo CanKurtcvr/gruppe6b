@@ -25,6 +25,9 @@ let currentLimbStates = {
   rightLeg: "red",
 };
 let completedPoses = new Set();
+let sessionSummaryActive = false;
+let sessionSummaryData = null;
+let sessionStartMs = 0;
 let halfTimeAnnounced = false;
 let matchStartAnnounced = false;
 let lastHintSpokenAt = 0;
@@ -1707,6 +1710,9 @@ let YOGA_POSES = buildSession("yoga", YOGA_LIBRARY);
 
 function setMode(index) {
   currentModeIndex = index;
+  currentProgram = null;
+  sessionSummaryActive = false;
+  sessionStartMs = millis();
   YOGA_POSES = buildSession(MODES[index].id, YOGA_LIBRARY);
   completedPoses = new Set();
   goToPose(0);
@@ -1924,6 +1930,17 @@ function mousePressed() {
   audioUnlocked = true;
   if (wellnessAudioCtx && wellnessAudioCtx.state === "suspended") {
     wellnessAudioCtx.resume();
+  }
+  // While the summary is up, only its own buttons respond.
+  if (sessionSummaryActive) {
+    for (const btn of uiButtons) {
+      if (!btn.summary) continue;
+      if (mouseX >= btn.x && mouseX <= btn.x + btn.w && mouseY >= btn.y && mouseY <= btn.y + btn.h) {
+        btn.onClick();
+        return;
+      }
+    }
+    return;
   }
 
   for (const btn of uiButtons) {
@@ -2166,10 +2183,20 @@ function updatePoseTimer(bestPose) {
     currentFeedback = "✨ Stillingen er fuldført i fuld harmoni... skifter videre";
     if (celebrationRemaining <= 0) {
       if (completedPoses.size >= YOGA_POSES.length) {
-        speakDanish("Hele forløbet er fuldført... tak til dig selv for denne stund. Vi starter nænsomt forfra.", { interrupt: true });
+        const secs = sessionStartMs ? Math.round((millis() - sessionStartMs) / 1000) : 0;
+        sessionSummaryData = {
+          count: completedPoses.size,
+          mins: Math.max(1, Math.round(secs / 60)),
+          tip: SUMMARY_TIPS[Math.floor(Math.random() * SUMMARY_TIPS.length)],
+        };
+        sessionSummaryActive = true;
+        sessionPaused = false;
+        stopDanishVoice();
+        speakDanish("Hele forløbet er fuldført... skønt klaret. Læn dig tilbage og nyd roen.", { interrupt: true });
         completedPoses = new Set();
+      } else {
+        goToPose((currentPoseIndex + 1) % YOGA_POSES.length);
       }
-      goToPose((currentPoseIndex + 1) % YOGA_POSES.length);
     }
     return;
   }
@@ -2369,7 +2396,8 @@ function draw() {
   uiButtons = [];
   const raw = bodyPose?.hasResult() ? bodyPose.getBest() : null;
   const best = smoothBest(raw);
-  updatePoseTimer(best);
+  if (!sessionStartMs) sessionStartMs = millis();
+  if (!sessionSummaryActive) updatePoseTimer(best);
 
   const fs = isFullscreen();
   const pad = fs ? 14 : 20;
@@ -2484,7 +2512,9 @@ function draw() {
   fill(pc(PAL.cream));
   textSize(26 * big);
   textAlign(LEFT, CENTER);
-  const fb = celebrationRemaining > 0 ? "✨ Flot! Videre til næste" : currentFeedback;
+  const fb = sessionSummaryActive
+    ? "🌸 Skønt klaret... hvile nu"
+    : celebrationRemaining > 0 ? "✨ Flot! Videre til næste" : currentFeedback;
   if (!hideText || fb.startsWith("📏") || /^[⬅➡]/.test(fb)) text(fb.length > 70 ? fb.slice(0, 68) + "…" : fb, 32, fbY + (fbH - 26) / 2 + 4, camW - 64 - 110 * big);
   textAlign(RIGHT, CENTER);
   textStyle(BOLD);
@@ -2605,6 +2635,38 @@ function draw() {
   textSize(22 * big);
   text(`${currentPoseIndex + 1} / ${YOGA_POSES.length}`, panelW / 2, ny + navH / 2);
   pop();
+
+  // --- End-of-session summary overlay ---
+  if (sessionSummaryActive && sessionSummaryData) {
+    push();
+    noStroke();
+    const pw = Math.min(width - pad * 2, 640);
+    const ph = Math.min(height * 0.55, 400);
+    const px = (width - pw) / 2;
+    const py = (height - ph) / 2 - 48;
+    fill(pc(PAL.plum, 238));
+    rect(px, py, pw, ph, 30);
+    fill(pc(PAL.cream));
+    textAlign(CENTER, CENTER);
+    textSize(42);
+    text("🌸 Skønt klaret!", width / 2, py + 62);
+    fill(pc(PAL.lilac));
+    textSize(23);
+    text(`Du fuldførte ${sessionSummaryData.count} øvelser på ca. ${sessionSummaryData.mins} minutter.`, width / 2, py + 118);
+    fill(pc(PAL.cream));
+    textSize(20);
+    text(sessionSummaryData.tip, px + 50, py + 162, pw - 100);
+    fill(pc(PAL.rose));
+    rect(px + pw / 2 - 190, py + ph - 116, 170, 56, 28);
+    rect(px + pw / 2 + 20, py + ph - 116, 170, 56, 28);
+    fill(pc(PAL.ink));
+    textSize(20);
+    text("🔁 Start forfra", px + pw / 2 - 105, py + ph - 88);
+    text("✕ Vis øvelser", px + pw / 2 + 105, py + ph - 88);
+    uiButtons.push({ x: px + pw / 2 - 190, y: py + ph - 116, w: 170, h: 56, summary: true, onClick: () => { sessionSummaryActive = false; setMode(currentModeIndex); } });
+    uiButtons.push({ x: px + pw / 2 + 20, y: py + ph - 116, w: 170, h: 56, summary: true, onClick: () => { sessionSummaryActive = false; } });
+    pop();
+  }
 
   // Floating exit button in fullscreen
   if (fs) {

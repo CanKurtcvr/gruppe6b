@@ -700,7 +700,53 @@ function filterByPreference(list) {
   return exact.concat(rest.slice(0, 4 - exact.length));
 }
 
+// ---------------- Færdige programmer: kuraterede runder ----------------
+// A program overrides the mode/level filtering with a fixed, gentle sequence.
+const PROGRAMS = [
+  {
+    id: "morgen",
+    label: "🌅 Morgenrutine",
+    desc: "Væk kroppen blidt",
+    exerciseIds: ["s-neck-left", "s-neck-right", "s-t-open", "s-cactus", "s-side-left", "s-side-right", "s-overhead"],
+  },
+  {
+    id: "aften",
+    label: "🌙 Aftenro",
+    desc: "Rolig afrunding på dagen",
+    exerciseIds: ["s-neck-left", "s-neck-right", "s-cross-left", "s-cross-right", "s-overhead"],
+  },
+  {
+    id: "skuldre",
+    label: "💪 Skuldre & nakke",
+    desc: "Løs spændinger i nakke og skuldre",
+    exerciseIds: ["s-cross-right", "s-cross-left", "s-cactus", "s-t-open", "s-neck-left", "s-neck-right"],
+  },
+];
+let currentProgram = __q.get("prog") && PROGRAMS.some((p) => p.id === __q.get("prog")) ? __q.get("prog") : null;
+function setCurrentProgram(id) {
+  currentProgram = PROGRAMS.some((p) => p.id === id) ? id : null;
+}
+
+// Gentle closing tips shown on the end-of-session summary.
+const SUMMARY_TIPS = [
+  "Et glas vand efter træningen hjælper kroppen med at hvile.",
+  "Selv fem minutter hver dag gør en forskel over tid.",
+  "Prøv 'Svær' niveau næste gang... kroppen elsker små udfordringer.",
+  "En rolig aftenrutine kan hjælpe kroppen til bedre søvn.",
+  "Lyt til din krop... de øvelser, der føles rart, er de rigtige for dig.",
+];
+
 function buildSession(modeId, yogaLibrary) {
+  if (currentProgram) {
+    const prog = PROGRAMS.find((p) => p.id === currentProgram);
+    if (prog) {
+      const chosen = prog.exerciseIds
+        .map((id) => STRETCH_LIBRARY.find((s) => s.id === id) || (yogaLibrary || []).find((p) => p.id === id))
+        .filter(Boolean);
+      const fit = chosen.filter((p) => !p.posture || p.posture === "any" || p.posture === currentPosture);
+      return fit.length ? fit : chosen;
+    }
+  }
   if (modeId === "yoga") return filterByPreference(yogaLibrary);
   if (modeId === "all") return filterByPreference(STRETCH_LIBRARY);
   return filterByPreference(STRETCH_LIBRARY.filter((s) => s.areas.includes(modeId)));
