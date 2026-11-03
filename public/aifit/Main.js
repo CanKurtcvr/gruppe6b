@@ -2484,6 +2484,7 @@ function draw() {
       camBgIndex = 0;
       removeBackgroundEnabled = false;
       setAmbient(false);
+      musicTheme = "calm";
     } else {
       camBgIndex = idx;
       removeBackgroundEnabled = true;
