@@ -39,12 +39,32 @@ const CAM_H = 480;
 
 // Returns "far" | "close" | "ok" based on how much of the body fits in the frame.
 function getDistanceState(pose, m) {
-  if (m.shoulderWidth < CAM_W * 0.08) return "far";
+  const lvl = DISTANCE_LEVELS[distanceLevelIndex];
+  if (lvl.off) return "ok";
+  if (m.shoulderWidth < CAM_W * lvl.far) return "far";
+  const nose = pose.nose;
+  if (lvl.edge >= 0 && (!ptOK(nose, 0.3) || nose.y < CAM_H * lvl.edge)) return "head";
+  const ls = pose.left_shoulder, rs = pose.right_shoulder;
+  if (ptOK(ls, 0.3) && ptOK(rs, 0.3) && lvl.edge >= 0) {
+    const cx = (ls.x + rs.x) / 2;
+    const margin = CAM_W * (0.12 + lvl.edge);
+    if (cx < margin) return "edgeLeft";
+    if (cx > CAM_W - margin) return "edgeRight";
+  }
   if (closeUpMode) return "ok";
-  const ankleSeen = (p) => ptOK(p, 0.3) && p.y < CAM_H * 0.98;
+  const ankleSeen = (p) => ptOK(p, 0.3) && p.y < CAM_H * (1 - Math.max(0, lvl.edge) * 0.5);
   if (!ankleSeen(pose.left_ankle) && !ankleSeen(pose.right_ankle)) return "close";
   return "ok";
 }
+// Screen text + spoken line for each distance problem.
+// The camera image is mirrored, so "left in camera" means the user's right.
+const DISTANCE_MSG = {
+  far: ["📏 Kom et skridt tættere", "Kom gerne et lille skridt tættere på kameraet."],
+  close: ["📏 Træd tilbage – fødderne skal ses", "Træd roligt et par skridt tilbage... så jeg kan se dine fødder."],
+  head: ["📏 Hovedet er udenfor – træd tilbage", "Dit hoved er lidt udenfor billedet... træd et skridt tilbage."],
+  edgeLeft: ["⬅ Gå lidt mod venstre", "Gå et lille skridt til venstre, så du står midt i billedet."],
+  edgeRight: ["➡ Gå lidt mod højre", "Gå et lille skridt til højre, så du står midt i billedet."],
+};
 let lastFrameMatched = false;
 let lastBreathCueAt = 0;
 
@@ -2130,19 +2150,11 @@ function updatePoseTimer(bestPose) {
     isPoseMatched = false;
     holdSeconds = Math.max(0, holdSeconds - dt * 0.5);
     currentGuidelines = [];
-    currentFeedback =
-      distState === "close"
-        ? "📏 Træd et par skridt tilbage, så hele kroppen og fødderne ses — eller tryk 'Tæt på' (T)"
-        : "📏 Kom lidt tættere på kameraet";
+    currentFeedback = DISTANCE_MSG[distState][0];
     distanceOkSince = 0;
     if (lastDistanceState !== distState || nowMs - lastDistanceSpokenAt > 9000) {
       lastDistanceSpokenAt = nowMs;
-      speakDanish(
-        distState === "close"
-          ? "Træd roligt et par skridt tilbage... så jeg kan se hele kroppen og dine fødder."
-          : "Kom gerne lidt tættere på kameraet.",
-        { interrupt: lastDistanceState !== distState }
-      );
+      speakDanish(DISTANCE_MSG[distState][1], { interrupt: lastDistanceState !== distState });
     }
     lastDistanceState = distState;
     return;
@@ -2312,7 +2324,8 @@ function draw() {
   const fs = isFullscreen();
   const pad = fs ? 14 : 20;
   const topBarH = fs ? 0 : 72;
-  const big = Math.max(1, Math.min(width / 1280, height / 800)); // text scale
+  const big = Math.max(1, Math.min(width / 1280, height / 800)) * TEXT_SIZES[textSizeIndex].s; // text scale
+  const hideText = !!TEXT_SIZES[textSizeIndex].hide;
 
   const pill = (x, y, label, active, onClick, w0) => {
     textSize(18);
@@ -2356,7 +2369,7 @@ function draw() {
   }
 
   // --- Layout: big camera left, illustration right ---
-  const barH = fs ? 0 : (showSettings ? 2 : 1) * 58 + 14;
+  const barH = fs ? 0 : (showSettings ? 3 : 1) * 58 + 14;
   const contentY = pad + topBarH;
   const availH = height - contentY - pad - (fs ? 0 : barH + 12);
   const camAreaW = (width - pad * 3) * (fs ? 0.7 : 0.64);
@@ -2420,7 +2433,7 @@ function draw() {
   textSize(26 * big);
   textAlign(LEFT, CENTER);
   const fb = celebrationRemaining > 0 ? "✨ Flot! Videre til næste" : currentFeedback;
-  text(fb.length > 70 ? fb.slice(0, 68) + "…" : fb, 32, fbY + (fbH - 26) / 2 + 4, camW - 64 - 110 * big);
+  if (!hideText || fb.startsWith("📏") || /^[⬅➡]/.test(fb)) text(fb.length > 70 ? fb.slice(0, 68) + "…" : fb, 32, fbY + (fbH - 26) / 2 + 4, camW - 64 - 110 * big);
   textAlign(RIGHT, CENTER);
   textStyle(BOLD);
   textSize(34 * big);
@@ -2516,7 +2529,7 @@ function drawSessionBar(pad, y) {
   push();
   noStroke();
   fill(pc(PAL.plum, 210));
-  rect(pad, y, width - pad * 2, (showSettings ? 2 : 1) * 58 + 14, 22);
+  rect(pad, y, width - pad * 2, (showSettings ? 3 : 1) * 58 + 14, 22);
 
   let x = pad + 14;
   let by = y + 12;
@@ -2585,7 +2598,17 @@ function drawSessionBar(pad, y) {
   );
   x += 10;
   btn(sessionPaused ? "▶" : "⏸", sessionPaused, togglePause);
-  btn("🎵", ambientEnabled, () => setAmbient(!ambientEnabled));
+  x += 10;
+  sep("Afstand");
+  DISTANCE_LEVELS.forEach((l, i) => btn(l.label, distanceLevelIndex === i, () => { distanceLevelIndex = i; lastDistanceState = "ok"; }));
+  x += 10;
+  sep("Tekst");
+  TEXT_SIZES.forEach((l, i) => btn(l.label, textSizeIndex === i, () => (textSizeIndex = i)));
+  x += 10;
+  sep("Musik");
+  btn(ambientEnabled ? "🎵 Til" : "🎵 Fra", ambientEnabled, () => setAmbient(!ambientEnabled));
+  btn("−", false, () => setMusicVolume(Math.max(0.1, musicVolume - 0.15)));
+  btn("+", false, () => setMusicVolume(Math.min(1, musicVolume + 0.15)));
   btn("◎ Mål", showCameraGuides, () => { showCameraGuides = !showCameraGuides; });
   btn("🪑 Tæt på", closeUpMode, () => { closeUpMode = !closeUpMode; });
   pop();
