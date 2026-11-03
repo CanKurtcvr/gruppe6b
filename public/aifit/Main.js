@@ -2384,11 +2384,12 @@ function draw() {
   const barH = fs ? 0 : (showSettings ? 4 : 1) * 58 + 14;
   const contentY = pad + topBarH;
   const availH = height - contentY - pad - (fs ? 0 : barH + 12);
-  const camAreaW = (width - pad * 3) * (fs ? 0.7 : 0.64);
+  const sideW = 58; // toggle buttons (skov / hav / musik) left of the camera
+  const camAreaW = (width - pad * 3 - sideW) * (fs ? 0.7 : 0.64);
   const s = Math.max(0.3, Math.min(camAreaW / CAM_W, availH / CAM_H));
   const camW = CAM_W * s;
   const camH = CAM_H * s;
-  const camX = pad;
+  const camX = pad + sideW + 12;
   const camY = contentY + (availH - camH) / 2;
 
   const limbVals = Object.values(currentLimbStates);
@@ -2460,6 +2461,39 @@ function draw() {
     textSize(54 * big);
     text("⏸ Pause", camW / 2, camH / 2);
   }
+  pop();
+
+  // --- Toggle buttons (skov / hav / musik) to the left of the camera ---
+  push();
+  noStroke();
+  textAlign(CENTER, CENTER);
+  const btnD = Math.min(56, sideW - 2);
+  const totalH = btnD * 3 + 28;
+  let byy = camY + (camH - totalH) / 2;
+  const sideBtn = (emoji, active, onClick) => {
+    fill(pc(active ? PAL.rose : PAL.cream, active ? 235 : 90));
+    circle(pad + sideW / 2, byy + btnD / 2, btnD);
+    fill(pc(PAL.ink));
+    textSize(btnD * 0.5);
+    text(emoji, pad + sideW / 2, byy + btnD / 2 + 1);
+    uiButtons.push({ x: pad + sideW / 2 - btnD / 2, y: byy, w: btnD, h: btnD, onClick });
+    byy += btnD + 14;
+  };
+  const toggleBg = (idx, theme) => {
+    if (camBgIndex === idx) {
+      camBgIndex = 0;
+      removeBackgroundEnabled = false;
+      setAmbient(false);
+      musicTheme = "calm";
+    } else {
+      camBgIndex = idx;
+      removeBackgroundEnabled = true;
+      setMusicTheme(theme);
+    }
+  };
+  sideBtn("🌳", camBgIndex === 1, () => toggleBg(1, "forest"));
+  sideBtn("🌊", camBgIndex === 2, () => toggleBg(2, "beach"));
+  sideBtn("🎵", ambientEnabled, () => setAmbient(!ambientEnabled));
   pop();
 
   // --- Right panel: illustration first, minimal big text ---
