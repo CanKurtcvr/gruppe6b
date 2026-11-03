@@ -30,11 +30,13 @@ const STEPS = [
 
 function Index() {
   const [started, setStarted] = useState(false);
+  const [level, setLevel] = useState(2);
+  const [pos, setPos] = useState<"sit" | "stand">("stand");
 
   if (started) {
     return (
       <iframe
-        src="/aifit/index.html"
+        src={`/aifit/index.html?level=${level}&pos=${pos}`}
         title="Hjemme Øvelser"
         allow="camera; microphone; autoplay; fullscreen"
         className="fixed inset-0 h-screen w-screen border-0 bg-background"
@@ -57,6 +59,43 @@ function Index() {
               <h2 className="text-lg font-medium mt-2">{s.title}</h2>
               <p className="text-intro-muted text-base mt-1">{s.text}</p>
             </div>
+          ))}
+        </div>
+        <h2 className="text-xl font-medium mt-8">Hvor svært skal det være?</h2>
+        <div className="flex flex-wrap gap-3 mt-3">
+          {[
+            [1, "Let", "Blide øvelser"],
+            [2, "Mellem", "Lidt mere udfordring"],
+            [3, "Svær", "Balance og styrke"],
+          ].map(([id, label, sub]) => (
+            <button
+              key={id}
+              onClick={() => setLevel(id as number)}
+              aria-pressed={level === id}
+              className={`rounded-2xl px-6 py-4 text-left text-lg transition ${level === id ? "bg-intro-accent text-foreground" : "bg-intro-card"}`}
+            >
+              <div className="font-medium">{label}</div>
+              <div className="text-sm opacity-80">{sub}</div>
+            </button>
+          ))}
+        </div>
+        <h2 className="text-xl font-medium mt-6">Vil du sidde eller stå?</h2>
+        <div className="flex flex-wrap gap-3 mt-3">
+          {(
+            [
+              ["sit", "🪑 Siddende", "På en stol"],
+              ["stand", "🧍 Stående", "Med plads omkring dig"],
+            ] as const
+          ).map(([id, label, sub]) => (
+            <button
+              key={id}
+              onClick={() => setPos(id)}
+              aria-pressed={pos === id}
+              className={`rounded-2xl px-6 py-4 text-left text-lg transition ${pos === id ? "bg-intro-accent text-foreground" : "bg-intro-card"}`}
+            >
+              <div className="font-medium">{label}</div>
+              <div className="text-sm opacity-80">{sub}</div>
+            </button>
           ))}
         </div>
         <button
