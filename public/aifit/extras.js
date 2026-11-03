@@ -31,11 +31,11 @@ let ambientEnabled = false;
 
 // Calm, wellness-style phrasing around corrections
 const CALM_OPENERS = [
-  "Helt roligt...",
+  "Ganske nænsomt...",
   "Mærk efter...",
   "Blødt og stille...",
   "Uden hast...",
-  "Med en rolig udånding...",
+  "Med en blød udånding...",
 ];
 let calmOpenerIdx = 0;
 function wellnessPhrase(text) {
@@ -53,6 +53,34 @@ const BREATH_CUES = [
 let breathIdx = 0;
 function nextBreathCue() {
   return BREATH_CUES[breathIdx++ % BREATH_CUES.length];
+}
+
+// Preparation owns the exercise-start gate; no hold time runs before it finishes.
+function createExercisePreparation() {
+  return {
+    phase: "loading",
+    remaining: 5,
+    introElapsed: 0,
+    readingSeconds: 4,
+    start(readingSeconds = 4) {
+      this.phase = "intro";
+      this.remaining = 5;
+      this.introElapsed = 0;
+      this.readingSeconds = readingSeconds;
+    },
+    tick(dt, { paused = false, speaking = false, voice = true } = {}) {
+      if (paused) return;
+      if (this.phase === "intro") {
+        this.introElapsed += dt;
+        if (voice ? !speaking : this.introElapsed >= this.readingSeconds) {
+          this.phase = "countdown";
+        }
+      } else if (this.phase === "countdown") {
+        this.remaining = Math.max(0, this.remaining - dt);
+        if (this.remaining <= 0) this.phase = "active";
+      }
+    },
+  };
 }
 
 // ---------------- Calm background music (generative, Web Audio) ----------------
@@ -235,7 +263,7 @@ function headTiltCheck(side) {
     if (!pr) {
       // One ear hidden usually means the head is tilted/turned — accept it.
       if (ptOK(pose.nose)) return { group: "torso", state: "orange", label: `Øret mod ${word} skulder`, hint: `Lad ${word} øre synke blødt ned mod ${word} skulder.` };
-      return { group: "torso", state: "red", label: "Hovedet synligt for kameraet", hint: "Vend ansigtet roligt mod kameraet." };
+      return { group: "torso", state: "red", label: "Hovedet synligt for kameraet", hint: "Vend ansigtet nænsomt mod kameraet." };
     }
     const tilt = Math.abs(pr[0].y - pr[1].y) / m.shoulderWidth;
     const state = tilt >= 0.07 ? "green" : tilt >= 0.035 ? "orange" : "red";
@@ -290,9 +318,9 @@ function legExtendCheck(side) {
     const group = side === "left" ? "leftLeg" : "rightLeg";
     // Siddende øvelse: foden må gerne være udenfor billedet — kun knæet skal ses.
     if (!ptOK(knee)) return { group, state: "red", label: `Stræk ${word} ben frem`, hint: "Ryk stolen lidt tilbage, så knæet kan ses." };
-    if (!ptOK(ankle)) return { group, state: "green", label: `${wordCap} ben strakt frem`, hint: `Smukt... stræk ${word} ben roligt frem. Foden må gerne være udenfor billedet.` };
+    if (!ptOK(ankle)) return { group, state: "green", label: `${wordCap} ben strakt frem`, hint: `Smukt... stræk ${word} ben nænsomt frem. Foden må gerne være udenfor billedet.` };
     const gap = (ankle.y - knee.y) / m.torsoLength;
-    return { group, state: gradeError(Math.max(0, gap - 0.18), 0.0, 0.3), label: `${wordCap} fod løftet til knæhøjde`, hint: `Løft ${word} fod lidt højere... stræk benet roligt frem.` };
+    return { group, state: gradeError(Math.max(0, gap - 0.18), 0.0, 0.3), label: `${wordCap} fod løftet til knæhøjde`, hint: `Løft ${word} fod lidt højere... stræk benet nænsomt frem.` };
   };
 }
 function feetWideCheck(ratio, label = "Fødderne godt fra hinanden") {
@@ -301,7 +329,7 @@ function feetWideCheck(ratio, label = "Fødderne godt fra hinanden") {
     if (!ptOK(la) || !ptOK(ra)) return { group: "leftLeg", state: "red", label, hint: "Træd et skridt tilbage, så fødderne kan ses." };
     const w = Math.abs(la.x - ra.x) / m.shoulderWidth;
     const st = gradeError(Math.max(0, ratio - w), 0.0, 0.5);
-    return { group: "leftLeg", state: st, label, hint: "Sæt fødderne lidt længere fra hinanden... roligt og stabilt." };
+    return { group: "leftLeg", state: st, label, hint: "Sæt fødderne lidt længere fra hinanden... med god støtte." };
   };
 }
 const armOut = (side, up = 0) => pointCheck({
@@ -404,7 +432,7 @@ const STRETCH_LIBRARY = [
     instruction:
       "Før højre arm vandret ind over brystet mod venstre skulder. Hold armen blødt med venstre hånd.",
     voiceIntro:
-      "Før din højre arm roligt ind over brystet, i skulderhøjde... og lad venstre hånd støtte den.",
+      "Før din højre arm nænsomt ind over brystet, i skulderhøjde... og lad venstre hånd støtte den.",
     checks: [
       pointCheck({
         key: "right_wrist",
@@ -431,7 +459,7 @@ const STRETCH_LIBRARY = [
     instruction:
       "Før venstre arm vandret ind over brystet mod højre skulder. Hold armen blødt med højre hånd.",
     voiceIntro:
-      "Nu venstre arm. Før den roligt ind over brystet i skulderhøjde... og støt med højre hånd.",
+      "Nu venstre arm. Før den nænsomt ind over brystet i skulderhøjde... og støt med højre hånd.",
     checks: [
       pointCheck({
         key: "left_wrist",
@@ -584,7 +612,7 @@ const STRETCH_LIBRARY = [
     instruction:
       "Stå rankt og løft venstre knæ op mod hoftehøjde. Støt dig gerne til en stol eller væg.",
     voiceIntro:
-      "Stå rankt, støt dig gerne til en stol... og løft venstre knæ roligt op mod hoften.",
+      "Stå rankt, støt dig gerne til en stol... og løft venstre knæ langsomt op mod hoften.",
     checks: [kneeLiftCheck("left"), levelShouldersCheck("Overkroppen rank og rolig")],
   }),
   makeStretch({
@@ -596,7 +624,7 @@ const STRETCH_LIBRARY = [
     subtitle: "Hofte & lår (støt dig gerne til en stol)",
     instruction:
       "Stå rankt og løft højre knæ op mod hoftehøjde. Støt dig gerne til en stol eller væg.",
-    voiceIntro: "Nu højre side... løft højre knæ roligt op mod hoften.",
+    voiceIntro: "Nu højre side... løft højre knæ langsomt op mod hoften.",
     checks: [kneeLiftCheck("right"), levelShouldersCheck("Overkroppen rank og rolig")],
   }),
 ];
@@ -620,7 +648,7 @@ STRETCH_LIBRARY.push(
     id: "s-cactus", areas: ["shoulders", "back", "neck"], level: 1, posture: "any", emoji: "🌵", img: "stretch-cactus.jpg",
     name: "Kaktusarme", subtitle: "Åbner skuldre & bryst",
     instruction: "Løft overarmene ud til siden i skulderhøjde, bøj albuerne og lad underarmene pege op mod loftet.",
-    voiceIntro: "Løft armene ud til siden... bøj albuerne... og lad hænderne pege roligt op mod loftet.",
+    voiceIntro: "Løft armene ud til siden... bøj albuerne... og lad hænderne pege blødt op mod loftet.",
     checks: ["left", "right"].map((sd) => pointCheck({
       key: `${sd}_wrist`, group: sd === "left" ? "leftArm" : "rightArm", part: sd === "left" ? "venstre hånd" : "højre hånd",
       label: `${sd === "left" ? "Venstre" : "Højre"} hånd op over albuen`,
@@ -632,7 +660,7 @@ STRETCH_LIBRARY.push(
     id: `s-legext-${sd}`, areas: ["hips"], level: 1, posture: "sit", emoji: "🦵", img: `stretch-legext-${sd}.jpg`,
     name: `Benstræk på stol — ${sd === "left" ? "venstre" : "højre"}`, subtitle: "Lår & knæ, siddende",
     instruction: `Sid rankt på stolen og stræk ${sd === "left" ? "venstre" : "højre"} ben langsomt frem, så foden kommer op i knæhøjde.`,
-    voiceIntro: `Sid rankt på stolen... og stræk ${sd === "left" ? "venstre" : "højre"} ben roligt frem.`,
+    voiceIntro: `Sid rankt på stolen... og stræk ${sd === "left" ? "venstre" : "højre"} ben nænsomt frem.`,
     checks: [legExtendCheck(sd), levelShouldersCheck("Overkroppen rank og rolig")],
   })),
   makeStretch({
