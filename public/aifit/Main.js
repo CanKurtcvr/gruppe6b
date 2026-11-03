@@ -2182,7 +2182,8 @@ function updatePoseTimer(bestPose) {
     if (nowMs - distanceOkSince > 700) {
       lastDistanceState = "ok";
       playWellnessChime("soft");
-      speakDanish("Perfekt... nu er du i en god afstand. Bliv stående der.", { interrupt: true });
+      const seatedNow = currentPosture === "sit" || ((YOGA_POSES[currentPoseIndex] || {}).posture === "sit");
+      speakDanish(seatedNow ? "Perfekt... nu er du i en god afstand. Bliv siddende der." : "Perfekt... nu er du i en god afstand. Bliv stående der.", { interrupt: true });
       lastHintSpokenAt = nowMs;
     }
   }
