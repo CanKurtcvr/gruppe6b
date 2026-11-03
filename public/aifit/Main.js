@@ -58,6 +58,8 @@ function getDistanceState(pose, m) {
   // Siddende øvelser: fødderne skal ikke være med i billedet.
   const curPose = YOGA_POSES[currentPoseIndex];
   if (currentPosture === "sit" || (curPose && curPose.posture === "sit")) return "ok";
+  // Øvelser uden benarbejde (nakke, skuldre, ryg): fødderne behøver ikke ses.
+  if (curPose && Array.isArray(curPose.areas) && !curPose.areas.includes("hips")) return "ok";
   const ankleSeen = (p) => ptOK(p, 0.3) && p.y < CAM_H * (1 - Math.max(0, lvl.edge) * 0.5);
   if (!ankleSeen(pose.left_ankle) && !ankleSeen(pose.right_ankle)) return "close";
   return "ok";
@@ -260,11 +262,20 @@ function speakDanish(text, { interrupt = false } = {}) {
     .catch(() => speakWithBrowserFallback(text, token));
 }
 
+const POSE_OPENERS = [
+  (n) => `Så er det tid til ${n}.`,
+  (n) => `Nu skal vi lave ${n}.`,
+  (n) => `Lad os gå videre til ${n}.`,
+  (n) => `Næste øvelse er ${n}.`,
+  (n) => `Vi fortsætter med ${n}.`,
+  (n) => `Lad os prøve ${n}.`,
+  (n) => `Nu venter ${n}.`,
+];
 function announceCurrentPose() {
   const p = YOGA_POSES[currentPoseIndex];
   if (!p) return;
   speakDanish(
-    `Nu skal vi lave ${p.name}. ${p.voiceIntro}`,
+    `${POSE_OPENERS[Math.floor(Math.random() * POSE_OPENERS.length)](p.name)} ${p.voiceIntro}`,
     { interrupt: true }
   );
   lastHintSpokenAt = millis();
