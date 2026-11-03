@@ -1980,14 +1980,14 @@ function drawPoseTargetGuides(pose) {
   push();
   for (const z of zones) {
     const isGreen = isPoseMatched;
-    fill(isGreen ? color(115, 232, 172, 36) : color(248, 195, 115, 28));
-    stroke(isGreen ? color(135, 242, 188, 190) : color(250, 205, 130, 175));
+    fill(isGreen ? color(126, 216, 176, 50) : color(244, 166, 198, 45));
+    stroke(isGreen ? color(126, 216, 176, 230) : color(244, 166, 198, 230));
     strokeWeight(2);
     drawingContext.setLineDash([6, 6]);
     ellipse(z.x, z.y, z.r * 2 * pulse, z.r * 2 * pulse);
     drawingContext.setLineDash([]);
 
-    if (z.label) {
+    if (false && z.label) {
       noStroke();
       fill(20, 42, 34, 185);
       textSize(11.5);
