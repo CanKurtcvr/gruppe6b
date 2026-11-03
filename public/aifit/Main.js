@@ -15,7 +15,7 @@ let graceRemaining = 0;
 let isPoseMatched = false;
 let celebrationRemaining = 0;
 let lastUpdateMs = 0;
-let currentFeedback = "Træd roligt ind foran kameraet og find din plads";
+let currentFeedback = "Træd stille ind foran kameraet og find din plads";
 let currentGuidelines = [];
 let currentLimbStates = {
   torso: "red",
@@ -63,7 +63,7 @@ function getDistanceState(pose, m) {
 // The camera image is mirrored, so "left in camera" means the user's right.
 const DISTANCE_MSG = {
   far: ["📏 Kom et skridt tættere", "Kom gerne et lille skridt tættere på kameraet."],
-  close: ["📏 Træd tilbage – fødderne skal ses", "Træd roligt et par skridt tilbage... så jeg kan se dine fødder."],
+  close: ["📏 Træd tilbage – fødderne skal ses", "Træd stille et par skridt tilbage... så jeg kan se dine fødder."],
   head: ["📏 Hovedet er udenfor – træd tilbage", "Dit hoved er lidt udenfor billedet... træd et skridt tilbage."],
   edgeLeft: ["⬅ Gå lidt mod venstre", "Gå et lille skridt til venstre, så du står midt i billedet."],
   edgeRight: ["➡ Gå lidt mod højre", "Gå et lille skridt til højre, så du står midt i billedet."],
@@ -434,7 +434,7 @@ function bestGrade(...grades) {
 // Compute specific directional Danish voice correction to guide a limb from Red/Orange to Green
 function getDirectionalAdvice(point, targetX, targetY, partName, m, state) {
   if (!ptOK(point)) {
-    return `Før roligt ${partName} ind i kameraets synsfelt.`;
+    return `Før nænsomt ${partName} ind i kameraets synsfelt.`;
   }
   const dx = targetX - point.x;
   const dy = targetY - point.y;
@@ -450,7 +450,7 @@ function getDirectionalAdvice(point, targetX, targetY, partName, m, state) {
   const prefix =
     state === "orange"
       ? `Du er tæt på med ${partName}... før den blot `
-      : `Før roligt ${partName} `;
+      : `Før nænsomt ${partName} `;
 
   if (dirs.length === 0) {
     return `${prefix}en lille smule tættere på målmarkeringen.`;
@@ -576,7 +576,7 @@ const YOGA_LIBRARY = [
           legAdvice =
             legState === "orange"
               ? "Du er i den orange zone med benet... løft foden lidt højere op mod inderlåret og åbn knæet ud til siden."
-              : "Løft roligt den ene fod op langs det modsatte ben for at komme ind i Træet.";
+              : "Løft nænsomt den ene fod op langs det modsatte ben for at komme ind i Træet.";
         }
       }
 
@@ -632,7 +632,7 @@ const YOGA_LIBRARY = [
     instruction:
       "Hold balancen og stræk begge arme højt op over hovedet med håndfladerne samlet lige over issen.",
     voiceIntro:
-      "Lad armene svæve roligt op over hovedet, og saml dine håndflader lige over issen.",
+      "Lad armene svæve nænsomt op over hovedet, og saml dine håndflader lige over issen.",
     crop: { x: 155, y: 5, w: 155, h: 335 },
     getTargetZones(m) {
       return [
@@ -732,7 +732,7 @@ const YOGA_LIBRARY = [
     instruction:
       "Stå bredt, bøj overkroppen til siden, før den ene hånd ned til skinnebenet og stræk den anden arm lige mod himlen.",
     voiceIntro:
-      "Stå bredt med benene. Lad den ene hånd glide ned langs benet, mens den anden arm strækkes roligt mod himlen.",
+      "Stå bredt med benene. Lad den ene hånd glide ned langs benet, mens den anden arm strækkes nænsomt mod himlen.",
     crop: { x: 315, y: 95, w: 215, h: 245 },
     getTargetZones(m) {
       return [
@@ -844,7 +844,7 @@ const YOGA_LIBRARY = [
     name: "4. Dyb Squat (Malasana)",
     subtitle: "Garland Squat — Jordforbindelse",
     instruction:
-      "Bøj knæene dybt, sænk hofterne roligt ned, og saml håndfladerne præcist foran hjertet.",
+      "Bøj knæene dybt, sænk hofterne nænsomt ned, og saml håndfladerne præcist foran hjertet.",
     voiceIntro:
       "Sænk hofterne blidt ned i en dyb squat, og saml håndfladerne foran hjertet.",
     crop: { x: 525, y: 165, w: 165, h: 175 },
@@ -902,7 +902,7 @@ const YOGA_LIBRARY = [
           voiceHint:
             legState === "orange"
               ? "Du er tæt på... sænk hofterne en lille smule dybere ned i din squat."
-              : "Bøj knæene og sænk hofterne roligt længere ned mod gulvet.",
+              : "Bøj knæene og sænk hofterne nænsomt længere ned mod gulvet.",
         },
         {
           label: "Løftet bryst og lige skuldre",
@@ -1327,7 +1327,7 @@ const YOGA_LIBRARY = [
     instruction:
       "Træd ud i udfaldstrin og stræk begge arme lige og parallelt op over skuldrene.",
     voiceIntro:
-      "Træd roligt ud i Kriger 1, og løft begge arme strakt op mod himlen med bløde skuldre.",
+      "Træd stille ud i Kriger 1, og løft begge arme strakt op mod himlen med bløde skuldre.",
     crop: { x: 15, y: 520, w: 170, h: 210 },
     getTargetZones(m) {
       return [
@@ -1417,7 +1417,7 @@ const YOGA_LIBRARY = [
     instruction:
       "Bøj overkroppen frem og ned i et omvendt V med hænderne rakt langt ned mod gulvet.",
     voiceIntro:
-      "Lad overkroppen smelte roligt fremad i Hundestrækket med hænderne mod gulvet og hofterne løftet.",
+      "Lad overkroppen glide nænsomt fremad i Hundestrækket med hænderne mod gulvet og hofterne løftet.",
     crop: { x: 175, y: 585, w: 235, h: 145 },
     getTargetZones(m) {
       return [
@@ -1461,7 +1461,7 @@ const YOGA_LIBRARY = [
           voiceHint:
             torsoState === "orange"
               ? "Du er tæt på... sænk overkroppen og hovedet en smule længere ned."
-              : "Bøj roligt overkroppen frem og ned, så hofterne er øverst.",
+              : "Bøj forsigtigt overkroppen frem og ned, så hofterne er øverst.",
         },
         {
           label: "Venstre arm strakt ned mod gulvet",
@@ -1517,7 +1517,7 @@ const YOGA_LIBRARY = [
     name: "11. Trebenet Hundestræk",
     subtitle: "Eka Pada Adho Mukha Svanasana",
     instruction:
-      "Støt roligt med hænderne mod gulvet og løft det ene ben højt og strakt op bagud.",
+      "Støt forsigtigt med hænderne mod gulvet og løft det ene ben højt og strakt op bagud.",
     voiceIntro:
       "Fra Hundestrækket løfter du nu det ene ben blidt og strakt op mod himlen.",
     crop: { x: 405, y: 550, w: 205, h: 180 },
@@ -1575,7 +1575,7 @@ const YOGA_LIBRARY = [
           voiceHint:
             legState === "orange"
               ? "Næsten i grøn... løft det bagerste ben en anelse højere op."
-              : "Løft roligt det ene ben højt op bag dig.",
+              : "Løft nænsomt det ene ben højt op bag dig.",
         },
       ];
 
@@ -1647,7 +1647,7 @@ const YOGA_LIBRARY = [
           voiceHint:
             torsoState === "orange"
               ? "Du er tæt på... lad hovedet og skuldrene synke lidt længere ned."
-              : "Fold overkroppen roligt forover fra hoften.",
+              : "Fold overkroppen nænsomt forover fra hoften.",
         },
         {
           label: "Venstre hånd rakt ned mod anklerne",
@@ -1952,7 +1952,7 @@ function keyPressed() {
   } else if (key === "b" || key === "B") {
     currentBgIndex = (currentBgIndex + 1) % BACKGROUNDS.length;
   } else if (key === "v" || key === "V") {
-    announceCurrentPose();
+    introduceCurrentPose();
   } else if (key === "g" || key === "G") {
     showCameraGuides = !showCameraGuides;
   } else if (key === "t" || key === "T") {
@@ -2163,10 +2163,10 @@ function updatePoseTimer(bestPose) {
       leftLeg: "green",
       rightLeg: "green",
     };
-    currentFeedback = "✨ Stillingen er fuldført i fuld harmoni... skifter roligt videre";
+    currentFeedback = "✨ Stillingen er fuldført i fuld harmoni... skifter videre";
     if (celebrationRemaining <= 0) {
       if (completedPoses.size >= YOGA_POSES.length) {
-        speakDanish("Hele forløbet er fuldført... tak til dig selv for denne stund. Vi starter roligt forfra.", { interrupt: true });
+        speakDanish("Hele forløbet er fuldført... tak til dig selv for denne stund. Vi starter nænsomt forfra.", { interrupt: true });
         completedPoses = new Set();
       }
       goToPose((currentPoseIndex + 1) % YOGA_POSES.length);
@@ -2178,7 +2178,7 @@ function updatePoseTimer(bestPose) {
   if (!bestPose) {
     isPoseMatched = false;
     holdSeconds = Math.max(0, holdSeconds - dt * 1.5);
-    currentFeedback = "Træd roligt ind foran kameraet, så kroppen ses tydeligt";
+    currentFeedback = "Træd stille ind foran kameraet, så kroppen ses tydeligt";
     currentGuidelines = [];
     return;
   }
@@ -2227,7 +2227,7 @@ function updatePoseTimer(bestPose) {
     const upperGreen = ["torso", "leftArm", "rightArm"].every((k) => (ls[k] || "red") === "green");
     if (upperGreen) {
       result.matched = true;
-      result.hint = "✨ Overkroppen er helt rigtig — hold stillingen roligt";
+      result.hint = "✨ Overkroppen er helt rigtig — hold stillingen uden hast";
     }
     result.guidelines = (result.guidelines || []).filter((g) => !/ben|fod|knæ|ankel/i.test(g.label || ""));
   }
@@ -2256,7 +2256,7 @@ function updatePoseTimer(bestPose) {
       matchStartAnnounced = true;
       playWellnessChime("soft");
       speakDanish(
-        `Smukt... alle linjer er grønne. Træk vejret roligt og bliv her i ${HOLD_TARGET_SECONDS} sekunder.`,
+        `Smukt... alle linjer er grønne. Lad åndedrættet flyde og bliv her i ${HOLD_TARGET_SECONDS} sekunder.`,
         { interrupt: true }
       );
     }
@@ -2406,8 +2406,8 @@ function draw() {
     const items = [
       ["⛶ Fuld skærm", false, toggleFullscreen],
       ["⚙ Indstillinger", showSettings, () => (showSettings = !showSettings)],
-      [voiceEnabled ? "🔊" : "🔇", voiceEnabled, () => { voiceEnabled = !voiceEnabled; if (!voiceEnabled) stopDanishVoice(); else announceCurrentPose(); }],
-      ["🗣 Gentag", false, () => { voiceEnabled = true; announceCurrentPose(); }],
+      [voiceEnabled ? "🔊" : "🔇", voiceEnabled, () => { voiceEnabled = !voiceEnabled; if (!voiceEnabled) stopDanishVoice(); else if (exercisePreparation.phase !== "active") introduceCurrentPose(); }],
+      ["🗣 Gentag", false, () => { voiceEnabled = true; introduceCurrentPose(); }],
     ];
     for (const [l, a, f] of items) {
       const w = textWidth(l) + 36;
