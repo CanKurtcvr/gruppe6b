@@ -2369,7 +2369,7 @@ function draw() {
   }
 
   // --- Layout: big camera left, illustration right ---
-  const barH = fs ? 0 : (showSettings ? 2 : 1) * 58 + 14;
+  const barH = fs ? 0 : (showSettings ? 3 : 1) * 58 + 14;
   const contentY = pad + topBarH;
   const availH = height - contentY - pad - (fs ? 0 : barH + 12);
   const camAreaW = (width - pad * 3) * (fs ? 0.7 : 0.64);
