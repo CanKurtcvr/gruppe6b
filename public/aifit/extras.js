@@ -4,7 +4,7 @@
 // Strictness: multiplies every green/orange tolerance. Lower = stricter.
 const STRICTNESS_LEVELS = [
   { id: "gentle", label: "Blid", factor: 1.35 },
-  { id: "normal", label: "Normal", factor: 1.05 },
+  { id: "normal", label: "Mellem", factor: 1.05 },
   { id: "strict", label: "Striks", factor: 0.75 },
 ];
 let strictnessIndex = 1;
@@ -60,7 +60,7 @@ function nextBreathCue() {
 let ambientNodes = null;
 const DISTANCE_LEVELS = [
   { label: "Følsom", far: 0.11, edge: 0.06 },
-  { label: "Normal", far: 0.08, edge: 0.03 },
+  { label: "Mellem", far: 0.08, edge: 0.03 },
   { label: "Afslappet", far: 0.05, edge: 0.0 },
   { label: "Fra", far: 0, edge: -1, off: true },
 ];
@@ -72,6 +72,22 @@ const TEXT_SIZES = [
 ];
 let textSizeIndex = 0;
 let musicVolume = 0.5;
+let musicTheme = "calm"; // calm | forest | beach
+let __noiseBuf = null;
+function noiseBuffer(ctx) {
+  if (__noiseBuf) return __noiseBuf;
+  const b = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
+  const d = b.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < d.length; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+  return (__noiseBuf = b);
+}
+function setMusicTheme(theme) {
+  if (musicTheme === theme && ambientEnabled) return;
+  musicTheme = theme;
+  if (ambientNodes) setAmbient(false);
+  setAmbient(true);
+}
 function setAmbient(on) {
   ambientEnabled = on;
   try {
@@ -120,12 +136,49 @@ function setAmbient(on) {
         for (let i = 0; i < 3; i++) if (Math.random() < 0.7) bell(scale[Math.floor(Math.random() * scale.length)], t + 1 + i * 2.6 + Math.random());
         step++;
       };
-      tick();
-      const timer = setInterval(tick, 8000);
-      ambientNodes = { master, timer };
+      let noiseSrc = null, noiseGain = null;
+      if (musicTheme === "beach" || musicTheme === "forest") {
+        noiseSrc = ctx.createBufferSource(); noiseSrc.buffer = noiseBuffer(ctx); noiseSrc.loop = true;
+        const f = ctx.createBiquadFilter();
+        f.type = musicTheme === "beach" ? "lowpass" : "bandpass";
+        f.frequency.value = musicTheme === "beach" ? 650 : 900;
+        noiseGain = ctx.createGain(); noiseGain.gain.value = musicTheme === "beach" ? 0.05 : 0.04;
+        noiseSrc.connect(f).connect(noiseGain).connect(master); noiseSrc.start();
+      }
+      const chirp = (t) => {
+        const base = 2200 + Math.random() * 1800;
+        const n = 2 + Math.floor(Math.random() * 4);
+        for (let k = 0; k < n; k++) {
+          const o = ctx.createOscillator(); o.type = "sine";
+          const g = ctx.createGain(); const tt = t + k * 0.13;
+          o.frequency.setValueAtTime(base, tt);
+          o.frequency.exponentialRampToValueAtTime(base * (1.3 + Math.random() * 0.4), tt + 0.08);
+          g.gain.setValueAtTime(0.0001, tt);
+          g.gain.exponentialRampToValueAtTime(0.035, tt + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.1);
+          o.connect(g).connect(master); o.start(tt); o.stop(tt + 0.12);
+        }
+      };
+      const themeTick = () => {
+        const t = ctx.currentTime + 0.1;
+        if (musicTheme === "beach" && noiseGain) {
+          // two slow wave swells per 8s
+          [0, 4].forEach((o) => {
+            noiseGain.gain.setValueAtTime(0.04, t + o);
+            noiseGain.gain.linearRampToValueAtTime(0.75, t + o + 1.8);
+            noiseGain.gain.linearRampToValueAtTime(0.04, t + o + 3.9);
+          });
+        } else if (musicTheme === "forest") {
+          for (let i = 0; i < 3; i++) if (Math.random() < 0.75) chirp(t + Math.random() * 7.5);
+        }
+      };
+      tick(); themeTick();
+      const timer = setInterval(() => { tick(); themeTick(); }, 8000);
+      ambientNodes = { master, timer, noiseSrc };
     } else if (!on && ambientNodes) {
-      const { master, timer } = ambientNodes;
+      const { master, timer, noiseSrc } = ambientNodes;
       clearInterval(timer);
+      if (noiseSrc) try { noiseSrc.stop(ctx.currentTime + 1.6); } catch {}
       master.gain.cancelScheduledValues(ctx.currentTime);
       master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), ctx.currentTime);
       master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
@@ -239,6 +292,36 @@ function kneeLiftCheck(side) {
     };
   };
 }
+
+function legExtendCheck(side) {
+  return (pose, m) => {
+    const knee = pose[`${side}_knee`], ankle = pose[`${side}_ankle`];
+    const word = side === "left" ? "venstre" : "højre";
+    const group = side === "left" ? "leftLeg" : "rightLeg";
+    if (!ptOK(knee) || !ptOK(ankle)) return { group, state: "red", label: `Stræk ${word} ben frem`, hint: "Ryk stolen lidt tilbage, så hele benet kan ses." };
+    const gap = (ankle.y - knee.y) / m.torsoLength;
+    return { group, state: gradeError(Math.max(0, gap - 0.18), 0.0, 0.3), label: `${word[0].toUpperCase() + word.slice(1)} fod løftet til knæhøjde`, hint: `Løft ${word} fod lidt højere... stræk benet roligt frem.` };
+  };
+}
+function feetWideCheck(ratio, label = "Fødderne godt fra hinanden") {
+  return (pose, m) => {
+    const la = pose.left_ankle, ra = pose.right_ankle;
+    if (!ptOK(la) || !ptOK(ra)) return { group: "leftLeg", state: "red", label, hint: "Træd et skridt tilbage, så fødderne kan ses." };
+    const w = Math.abs(la.x - ra.x) / m.shoulderWidth;
+    const st = gradeError(Math.max(0, ratio - w), 0.0, 0.5);
+    return { group: "leftLeg", state: st, label, hint: "Sæt fødderne lidt længere fra hinanden... roligt og stabilt." };
+  };
+}
+const armOut = (side, up = 0) => pointCheck({
+  key: `${side}_wrist`, group: side === "left" ? "leftArm" : "rightArm",
+  part: side === "left" ? "venstre hånd" : "højre hånd",
+  label: `${side === "left" ? "Venstre" : "Højre"} arm ud til siden`,
+  at: (pose, m) => ({
+    x: pose[`${side}_shoulder`].x + (side === "left" ? 1 : -1) * sideDir(pose) * m.shoulderWidth * (up ? 1.2 : 1.5),
+    y: pose[`${side}_shoulder`].y - m.torsoLength * up,
+  }),
+  green: 0.45, orange: 0.9,
+});
 
 function makeStretch(def) {
   return {
@@ -526,8 +609,89 @@ const STRETCH_LIBRARY = [
   }),
 ];
 
+// Difficulty + sitting/standing preference (set from the start screen)
+const LEVELS = [
+  { id: 1, label: "Let" },
+  { id: 2, label: "Mellem" },
+  { id: 3, label: "Svær" },
+];
+const POSTURES = [
+  { id: "sit", label: "🪑 Siddende" },
+  { id: "stand", label: "🧍 Stående" },
+];
+const __q = new URLSearchParams(location.search);
+let currentLevel = [1, 2, 3].includes(+__q.get("level")) ? +__q.get("level") : 2;
+let currentPosture = __q.get("pos") === "sit" ? "sit" : "stand";
+
+STRETCH_LIBRARY.push(
+  makeStretch({
+    id: "s-cactus", areas: ["shoulders", "back", "neck"], level: 1, posture: "any", emoji: "🌵", img: "stretch-cactus.jpg",
+    name: "Kaktusarme", subtitle: "Åbner skuldre & bryst",
+    instruction: "Løft overarmene ud til siden i skulderhøjde, bøj albuerne og lad underarmene pege op mod loftet.",
+    voiceIntro: "Løft armene ud til siden... bøj albuerne... og lad hænderne pege roligt op mod loftet.",
+    checks: ["left", "right"].map((sd) => pointCheck({
+      key: `${sd}_wrist`, group: sd === "left" ? "leftArm" : "rightArm", part: sd === "left" ? "venstre hånd" : "højre hånd",
+      label: `${sd === "left" ? "Venstre" : "Højre"} hånd op over albuen`,
+      at: (pose, m) => ({ x: pose[`${sd}_shoulder`].x + (sd === "left" ? 1 : -1) * sideDir(pose) * m.shoulderWidth * 0.85, y: pose[`${sd}_shoulder`].y - m.torsoLength * 0.55 }),
+      green: 0.45, orange: 0.9,
+    })).concat([levelShouldersCheck()]),
+  }),
+  ...["left", "right"].map((sd) => makeStretch({
+    id: `s-legext-${sd}`, areas: ["hips"], level: 1, posture: "sit", emoji: "🦵", img: `stretch-legext-${sd}.jpg`,
+    name: `Benstræk på stol — ${sd === "left" ? "venstre" : "højre"}`, subtitle: "Lår & knæ, siddende",
+    instruction: `Sid rankt på stolen og stræk ${sd === "left" ? "venstre" : "højre"} ben langsomt frem, så foden kommer op i knæhøjde.`,
+    voiceIntro: `Sid rankt på stolen... og stræk ${sd === "left" ? "venstre" : "højre"} ben roligt frem.`,
+    checks: [legExtendCheck(sd), levelShouldersCheck("Overkroppen rank og rolig")],
+  })),
+  makeStretch({
+    id: "s-star", areas: ["shoulders", "back", "hips"], level: 2, posture: "stand", emoji: "⭐", img: "stretch-star.jpg",
+    name: "Stjernen", subtitle: "Hele kroppen bliver lang",
+    instruction: "Stå med fødderne bredt fra hinanden og løft armene skråt op, som en stor stjerne.",
+    voiceIntro: "Sæt fødderne bredt... løft armene skråt op... og bliv en stor, rolig stjerne.",
+    checks: [armOut("left", 0.7), armOut("right", 0.7), feetWideCheck(1.6)],
+  }),
+  makeStretch({
+    id: "s-warrior2", areas: ["hips", "back"], level: 3, posture: "stand", emoji: "🗡️", img: "stretch-warrior2.jpg",
+    name: "Kriger II", subtitle: "Styrke i ben & balance",
+    instruction: "Stå bredt, bøj det ene knæ og stræk begge arme vandret ud til siden.",
+    voiceIntro: "Træd bredt ud... bøj det forreste knæ... og stræk armene ud som en rolig kriger.",
+    checks: [armOut("left"), armOut("right"), feetWideCheck(2.2, "Bred og stabil stand")],
+  }),
+  ...["left", "right"].map((sd) => makeStretch({
+    id: `s-balance-${sd}`, areas: ["hips"], level: 3, posture: "stand", emoji: "🦩", img: `stretch-balance-${sd}.jpg`,
+    name: `Balance på ét ben — ${sd === "left" ? "venstre knæ op" : "højre knæ op"}`, subtitle: "Balance & stabilitet",
+    instruction: `Løft ${sd === "left" ? "venstre" : "højre"} knæ op mod hoften og stræk armene ud til siden for balance.`,
+    voiceIntro: `Find et fast punkt med øjnene... løft ${sd === "left" ? "venstre" : "højre"} knæ... og lad armene hjælpe balancen.`,
+    checks: [kneeLiftCheck(sd), armOut("left"), armOut("right")],
+  }))
+);
+// Tag older stretches
+const __tags = { "s-neck-left": [1, "any"], "s-neck-right": [1, "any"], "s-cross-right": [1, "any"], "s-cross-left": [1, "any"], "s-t-open": [1, "any"], "s-overhead": [1, "any"], "s-side-left": [2, "any"], "s-side-right": [2, "any"], "s-knee-left": [2, "stand"], "s-knee-right": [2, "stand"] };
+STRETCH_LIBRARY.forEach((s) => { if (__tags[s.id]) [s.level, s.posture] = __tags[s.id]; });
+
+function filterByPreference(list) {
+  const fit = list.filter((p) => !p.posture || p.posture === "any" || p.posture === currentPosture);
+  const pool = fit.length ? fit : list;
+  const exact = pool.filter((p) => (p.level || 2) === currentLevel);
+  if (exact.length >= 4) return exact;
+  const rest = pool
+    .filter((p) => (p.level || 2) !== currentLevel)
+    .sort((a, b) => Math.abs((a.level || 2) - currentLevel) - Math.abs((b.level || 2) - currentLevel));
+  return exact.concat(rest.slice(0, 4 - exact.length));
+}
+
 function buildSession(modeId, yogaLibrary) {
-  if (modeId === "yoga") return yogaLibrary;
-  if (modeId === "all") return STRETCH_LIBRARY;
-  return STRETCH_LIBRARY.filter((s) => s.areas.includes(modeId));
+  if (modeId === "yoga") return filterByPreference(yogaLibrary);
+  if (modeId === "all") return filterByPreference(STRETCH_LIBRARY);
+  return filterByPreference(STRETCH_LIBRARY.filter((s) => s.areas.includes(modeId)));
+}
+
+// Video backgrounds (forest / beach)
+const __bgVideos = {};
+function getBgVideo(url) {
+  if (__bgVideos[url]) return __bgVideos[url];
+  const v = document.createElement("video");
+  v.src = url; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.crossOrigin = "anonymous";
+  v.play().catch(() => {});
+  return (__bgVideos[url] = v);
 }

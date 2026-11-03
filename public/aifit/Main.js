@@ -69,7 +69,7 @@ let lastFrameMatched = false;
 let lastBreathCueAt = 0;
 
 // Background removal (Selfie Segmentation) onto Green Wellness Gradient
-let removeBackgroundEnabled = true;
+let removeBackgroundEnabled = false;
 let selfieSegmentation = null;
 let segmentationReady = false;
 let segmentationBusy = false;
@@ -86,13 +86,25 @@ const CAM_BGS = [
   { id: "lavender", label: "Lilla", colors: ["#3d3466", "#8a7cc8", "#e2d9f3"] },
   { id: "sand", label: "Sand", colors: ["#6b5a45", "#c9b38f", "#f3ead8"] },
   { id: "night", label: "Nat", colors: ["#05070f", "#16223f", "#2c3e6b"] },
+  { id: "forest", label: "Skov", icon: "🌳", music: "forest", video: "/__l5e/assets-v1/fcfb255f-d9a8-431b-aa34-6d225c87dfef/forest-bg.mp4", colors: ["#1f3b24", "#4f7a3c", "#a8c97f"] },
+  { id: "beach", label: "Strand", icon: "🌊", music: "beach", video: "/__l5e/assets-v1/c9dafba9-12f9-4406-b1cb-86456c7865a4/beach-bg.mp4", colors: ["#2a8fb8", "#9fe0ea", "#f3e2c0"] },
 ];
-let camBgIndex = 1;
+let camBgIndex = 0;
 let showSettings = false;
 function drawCamBackground(x, y, w, h, t) {
   const b = CAM_BGS[camBgIndex];
   if (!b || !b.colors || b.id === "green") return drawGreenWellnessGradientRect(x, y, w, h, t);
   const ctx = drawingContext;
+  if (b.video) {
+    const v = getBgVideo(b.video);
+    if (v.paused) v.play().catch(() => {});
+    if (v.readyState >= 2 && v.videoWidth) {
+      const sc = Math.max(w / v.videoWidth, h / v.videoHeight);
+      const vw = v.videoWidth * sc, vh = v.videoHeight * sc;
+      ctx.drawImage(v, x + (w - vw) / 2, y + (h - vh) / 2, vw, vh);
+      return;
+    }
+  }
   ctx.save();
   const g = ctx.createLinearGradient(x, y, x + w * 0.6, y + h);
   b.colors.forEach((c, k) => g.addColorStop(k / (b.colors.length - 1), c));
@@ -1669,7 +1681,10 @@ const YOGA_LIBRARY = [
   },
 ];
 
-let YOGA_POSES = YOGA_LIBRARY;
+// Difficulty (1 let, 2 mellem, 3 svær) and posture for each yoga pose
+const __yogaTags = { 1: [2, "stand"], 2: [2, "stand"], 3: [2, "stand"], 4: [3, "stand"], 5: [1, "sit"], 6: [1, "sit"], 7: [1, "sit"], 8: [3, "sit"], 9: [2, "stand"], 10: [3, "stand"], 11: [3, "stand"], 12: [2, "stand"] };
+YOGA_LIBRARY.forEach((p) => { if (__yogaTags[p.id]) [p.level, p.posture] = __yogaTags[p.id]; });
+let YOGA_POSES = buildSession("yoga", YOGA_LIBRARY);
 
 function setMode(index) {
   currentModeIndex = index;
@@ -2568,13 +2583,13 @@ function drawSessionBar(pad, y) {
       ctx.fillStyle = g;
     } else ctx.fillStyle = "#5a4a6e";
     ctx.beginPath(); ctx.arc(cx, cy, h / 2 - 3, 0, Math.PI * 2); ctx.fill();
-    if (!b.colors) { fill(255); textAlign(CENTER, CENTER); textSize(18); text("📷", cx, cy + 1); }
+    if (!b.colors || b.icon) { fill(255); textAlign(CENTER, CENTER); textSize(18); text(b.icon || "📷", cx, cy + 1); }
     noFill();
     stroke(camBgIndex === i ? pc(PAL.rose) : pc(PAL.cream, 50));
     strokeWeight(camBgIndex === i ? 3 : 1);
     circle(cx, cy, h);
     noStroke();
-    uiButtons.push({ x, y: by, w: h, h, onClick: () => { camBgIndex = i; removeBackgroundEnabled = !!CAM_BGS[i].colors; } });
+    uiButtons.push({ x, y: by, w: h, h, onClick: () => { camBgIndex = i; removeBackgroundEnabled = !!CAM_BGS[i].colors; const mt = CAM_BGS[i].music || "calm"; if (CAM_BGS[i].music || (ambientEnabled && musicTheme !== "calm")) setMusicTheme(mt); } });
     x += h + 8;
   };
 
@@ -2584,6 +2599,10 @@ function drawSessionBar(pad, y) {
   x = pad + 14; by += h + 12;
   sep("Baggrund");
   CAM_BGS.forEach((_, i) => swatch(i));
+  x += 10;
+  sep("Sværhed");
+  LEVELS.forEach((l) => btn(l.label, currentLevel === l.id, () => { currentLevel = l.id; setMode(currentModeIndex); }));
+  POSTURES.forEach((pz) => btn(pz.label, currentPosture === pz.id, () => { currentPosture = pz.id; setMode(currentModeIndex); }));
   x += 10;
   sep("Præcision");
   STRICTNESS_LEVELS.forEach((l, i) => btn(l.label, strictnessIndex === i, () => (strictnessIndex = i)));
