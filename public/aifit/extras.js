@@ -31,11 +31,11 @@ let ambientEnabled = false;
 
 // Calm, wellness-style phrasing around corrections
 const CALM_OPENERS = [
-  "Helt roligt...",
+  "Ganske nænsomt...",
   "Mærk efter...",
   "Blødt og stille...",
   "Uden hast...",
-  "Med en rolig udånding...",
+  "Med en blød udånding...",
 ];
 let calmOpenerIdx = 0;
 function wellnessPhrase(text) {
@@ -53,6 +53,34 @@ const BREATH_CUES = [
 let breathIdx = 0;
 function nextBreathCue() {
   return BREATH_CUES[breathIdx++ % BREATH_CUES.length];
+}
+
+// Preparation owns the exercise-start gate; no hold time runs before it finishes.
+function createExercisePreparation() {
+  return {
+    phase: "loading",
+    remaining: 5,
+    introElapsed: 0,
+    readingSeconds: 4,
+    start(readingSeconds = 4) {
+      this.phase = "intro";
+      this.remaining = 5;
+      this.introElapsed = 0;
+      this.readingSeconds = readingSeconds;
+    },
+    tick(dt, { paused = false, speaking = false, voice = true } = {}) {
+      if (paused) return;
+      if (this.phase === "intro") {
+        this.introElapsed += dt;
+        if (voice ? !speaking : this.introElapsed >= this.readingSeconds) {
+          this.phase = "countdown";
+        }
+      } else if (this.phase === "countdown") {
+        this.remaining = Math.max(0, this.remaining - dt);
+        if (this.remaining <= 0) this.phase = "active";
+      }
+    },
+  };
 }
 
 // ---------------- Calm background music (generative, Web Audio) ----------------

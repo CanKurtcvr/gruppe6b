@@ -70,6 +70,8 @@ const DISTANCE_MSG = {
 };
 let lastFrameMatched = false;
 let lastBreathCueAt = 0;
+const exercisePreparation = createExercisePreparation();
+let lastPreparationNumber = 0;
 
 // Background removal (Selfie Segmentation) onto Green Wellness Gradient
 let removeBackgroundEnabled = false;
@@ -195,7 +197,7 @@ function stopDanishVoice() {
   isSpeaking = false;
 }
 
-function speakWithBrowserFallback(text, token) {
+function speakWithBrowserFallback(text, token, rate = 0.85) {
   if (typeof window === "undefined" || !window.speechSynthesis || token !== speechToken) {
     if (token === speechToken) isSpeaking = false;
     return;
@@ -203,7 +205,7 @@ function speakWithBrowserFallback(text, token) {
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = "da-DK";
-  utter.rate = 0.85;
+  utter.rate = rate;
   utter.pitch = 0.95;
   utter.volume = 0.9;
 
@@ -259,10 +261,31 @@ function announceCurrentPose() {
   const p = YOGA_POSES[currentPoseIndex];
   if (!p) return;
   speakDanish(
-    `Tag en dyb, rolig indånding... ${p.name}. ${p.voiceIntro}`,
+    `Nu skal vi lave ${p.name}. ${p.voiceIntro}`,
     { interrupt: true }
   );
   lastHintSpokenAt = millis();
+}
+
+function introduceCurrentPose() {
+  const p = YOGA_POSES[currentPoseIndex];
+  if (!p) return;
+  exercisePreparation.start(Math.min(12, Math.max(4, (p.instruction || p.voiceIntro || "").split(/\s+/).length / 2.5)));
+  lastPreparationNumber = 0;
+  lastDistanceState = "ok";
+  distanceOkSince = 0;
+  currentGuidelines = [];
+  currentFeedback = "Se øvelsen — find din stilling";
+  if (!sessionPaused) announceCurrentPose();
+}
+
+function announcePreparationNumber(number) {
+  if (!voiceEnabled) return;
+  // Local short cues avoid generation delays between the five countdown beats.
+  stopDanishVoice();
+  isSpeaking = true;
+  const words = ["", "en", "to", "tre", "fire", "fem"];
+  speakWithBrowserFallback(words[number], speechToken, 1.15);
 }
 
 // ---------------- Real-time Background Removal (Selfie Segmentation) ----------------
@@ -1769,9 +1792,7 @@ async function setup() {
   await bodyPose.start();
   lastUpdateMs = millis();
 
-  setTimeout(() => {
-    announceCurrentPose();
-  }, 600);
+  introduceCurrentPose();
 }
 
 function windowResized() {
@@ -1954,7 +1975,8 @@ function togglePause() {
     stopDanishVoice();
   } else {
     lastUpdateMs = millis();
-    speakDanish("Vi fortsætter roligt... når du er klar.", { interrupt: true });
+    if (exercisePreparation.phase !== "active") introduceCurrentPose();
+    else speakDanish("Vi fortsætter nænsomt... når du er klar.", { interrupt: true });
   }
 }
 
@@ -1968,7 +1990,7 @@ function goToPose(index) {
   celebrationRemaining = 0;
   halfTimeAnnounced = false;
   matchStartAnnounced = false;
-  announceCurrentPose();
+  introduceCurrentPose();
 }
 
 // ---------------- Wellness Styling for Body Lines (Red -> Orange -> Green) ----------------
@@ -2111,6 +2133,26 @@ function updatePoseTimer(bestPose) {
   const dt = Math.min(0.25, Math.max(0, (now - lastUpdateMs) / 1000));
   lastUpdateMs = now;
 
+  if (sessionPaused) return;
+  if (exercisePreparation.phase !== "active") {
+    exercisePreparation.tick(dt, { speaking: isSpeaking, voice: voiceEnabled });
+    isPoseMatched = false;
+    if (exercisePreparation.phase === "countdown") {
+      const number = Math.ceil(exercisePreparation.remaining);
+      currentFeedback = "Gør dig klar";
+      if (number !== lastPreparationNumber) {
+        lastPreparationNumber = number;
+        announcePreparationNumber(number);
+      }
+    } else if (exercisePreparation.phase === "active") {
+      stopDanishVoice();
+      playWellnessChime("soft");
+      currentFeedback = "Begynd — find stillingen";
+      lastHintSpokenAt = now;
+    }
+    return;
+  }
+
   if (celebrationRemaining > 0) {
     celebrationRemaining -= dt;
     isPoseMatched = true;
@@ -2150,10 +2192,6 @@ function updatePoseTimer(bestPose) {
     return;
   }
 
-  if (sessionPaused) {
-    currentFeedback = "⏸ Pause — tag dig god tid. Tryk mellemrum for at fortsætte";
-    return;
-  }
   // Distance check: tell the user when they are too close / far, and when they are good.
   const distState = getDistanceState(bestPose, metrics);
   const nowMs = millis();
@@ -2394,7 +2432,8 @@ function draw() {
 
   const limbVals = Object.values(currentLimbStates);
   const anyOrangeOrGreen = limbVals.includes("orange") || limbVals.includes("green");
-  const stateCol = isPoseMatched ? PAL.good : anyOrangeOrGreen ? PAL.near : PAL.bad;
+  const preparing = exercisePreparation.phase !== "active";
+  const stateCol = preparing ? PAL.lilac : isPoseMatched ? PAL.good : anyOrangeOrGreen ? PAL.near : PAL.bad;
 
   push();
   translate(camX, camY);
@@ -2419,7 +2458,7 @@ function draw() {
   } else {
     image(cam, 0, 0, CAM_W, CAM_H);
   }
-  if (best) {
+  if (best && !preparing) {
     drawPoseTargetGuides(best);
     drawWellnessBodyModel(best, currentLimbStates);
   }
@@ -2450,8 +2489,19 @@ function draw() {
   textAlign(RIGHT, CENTER);
   textStyle(BOLD);
   textSize(34 * big);
-  text(`${Math.ceil(Math.max(0, HOLD_TARGET_SECONDS - holdSeconds))}s`, camW - 32, fbY + (fbH - 26) / 2 + 4);
+  text(preparing ? "" : `${Math.ceil(Math.max(0, HOLD_TARGET_SECONDS - holdSeconds))}s`, camW - 32, fbY + (fbH - 26) / 2 + 4);
   textStyle(NORMAL);
+
+  if (exercisePreparation.phase === "countdown" && !sessionPaused) {
+    fill(pc(PAL.plum, 225));
+    circle(camW / 2, camH / 2 - 24, Math.min(180, camH * 0.38));
+    fill(pc(PAL.cream));
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(Math.min(100, camH * 0.23));
+    text(Math.ceil(exercisePreparation.remaining), camW / 2, camH / 2 - 24);
+    textStyle(NORMAL);
+  }
 
   if (sessionPaused) {
     fill(pc(PAL.plum, 170));
