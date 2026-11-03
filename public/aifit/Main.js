@@ -59,10 +59,11 @@ let personLayerCtx = null;
 // Calm background themes (Default: Green Wellness Gradient)
 const CAM_BGS = [
   { id: "none", label: "Kamera", colors: null },
-  { id: "green", label: "Grøn", colors: ["#1c3f32", "#2b5e4a", "#18352a"] },
+  { id: "green", label: "Lavendel", colors: ["#2e2142", "#5b4380", "#8a5f8f"] },
+  { id: "rose", label: "Rosa", colors: ["#4a2a4a", "#c27b9e", "#f6d0de"] },
   { id: "ocean", label: "Hav", colors: ["#0b3d5c", "#2a8fb8", "#9fe0ea"] },
   { id: "sunset", label: "Solnedgang", colors: ["#3b1f4a", "#c4566b", "#f6b26b"] },
-  { id: "lavender", label: "Lavendel", colors: ["#3d3466", "#8a7cc8", "#e2d9f3"] },
+  { id: "lavender", label: "Lilla", colors: ["#3d3466", "#8a7cc8", "#e2d9f3"] },
   { id: "sand", label: "Sand", colors: ["#6b5a45", "#c9b38f", "#f3ead8"] },
   { id: "night", label: "Nat", colors: ["#05070f", "#16223f", "#2c3e6b"] },
 ];
@@ -349,7 +350,7 @@ const KEYPOINT_GROUPS = {
   right_ankle: "rightLeg",
 };
 
-function ptOK(p, minC = 0.28) {
+function ptOK(p, minC = 0.2) {
   return p && Number.isFinite(p.x) && Number.isFinite(p.y) && (p.c ?? 1) >= minC;
 }
 
@@ -1751,9 +1752,9 @@ function drawGreenWellnessGradientRect(x, y, w, h, t) {
   const ctx = drawingContext;
   ctx.save();
   const grad = ctx.createLinearGradient(x, y, x + w * 0.85, y + h);
-  grad.addColorStop(0, "#1c3f32");
-  grad.addColorStop(0.45, "#2b5e4a");
-  grad.addColorStop(1, "#18352a");
+  grad.addColorStop(0, "#2e2142");
+  grad.addColorStop(0.45, "#4f3a70");
+  grad.addColorStop(1, "#3a2648");
   ctx.fillStyle = grad;
   ctx.fillRect(x, y, w, h);
 
@@ -1768,9 +1769,9 @@ function drawGreenWellnessGradientRect(x, y, w, h, t) {
     auraY,
     Math.max(w, h) * 0.65
   );
-  radGrad.addColorStop(0, "rgba(130, 220, 175, 0.24)");
-  radGrad.addColorStop(0.55, "rgba(85, 175, 135, 0.10)");
-  radGrad.addColorStop(1, "rgba(24, 53, 42, 0)");
+  radGrad.addColorStop(0, "rgba(244, 166, 198, 0.22)");
+  radGrad.addColorStop(0.55, "rgba(199, 180, 239, 0.12)");
+  radGrad.addColorStop(1, "rgba(46, 33, 66, 0)");
   ctx.fillStyle = radGrad;
   ctx.fillRect(x, y, w, h);
   ctx.restore();
@@ -1788,7 +1789,7 @@ function drawCalmBackground() {
 
     // Gentle organic sage waves at the bottom
     for (let w = 0; w < 3; w++) {
-      fill(90 + w * 20, 175 + w * 15, 135 + w * 10, 28);
+      fill(200 + w * 15, 160 + w * 10, 220 - w * 10, 26);
       beginShape();
       vertex(0, height);
       for (let x = 0; x <= width; x += 36) {
@@ -1854,7 +1855,7 @@ function drawCalmBackground() {
 
   // Soft floating wellness light motes
   noStroke();
-  fill(210, 250, 225, 95);
+  fill(250, 225, 240, 95);
   for (const p of bgParticles) {
     p.x += p.speedX + Math.sin(t + p.phase) * 0.2;
     p.y += p.speedY;
@@ -1911,8 +1912,7 @@ function keyPressed() {
   } else if (key === "m" || key === "M") {
     setMode((currentModeIndex + 1) % MODES.length);
   } else if (key === "f" || key === "F") {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-    else document.exitFullscreen?.();
+    toggleFullscreen();
   }
   return false;
 }
@@ -1944,10 +1944,10 @@ function goToPose(index) {
 function getWellnessStyleForGrade(grade) {
   if (grade === "green") {
     return {
-      stroke: "rgba(115, 232, 172, 0.92)",
+      stroke: "rgba(126, 216, 176, 0.95)",
       core: "rgba(235, 255, 245, 0.88)",
       glow: "rgba(95, 228, 165, 0.65)",
-      jointFill: [115, 232, 172],
+      jointFill: [126, 216, 176],
     };
   }
   if (grade === "orange") {
@@ -1959,10 +1959,10 @@ function getWellnessStyleForGrade(grade) {
     };
   }
   return {
-    stroke: "rgba(232, 114, 114, 0.88)",
+    stroke: "rgba(255, 134, 154, 0.92)",
     core: "rgba(255, 228, 228, 0.78)",
     glow: "rgba(228, 100, 100, 0.52)",
-    jointFill: [232, 114, 114],
+    jointFill: [255, 134, 154],
   };
 }
 
@@ -1992,7 +1992,7 @@ function drawPoseTargetGuides(pose) {
       fill(20, 42, 34, 185);
       textSize(11.5);
       const tw = textWidth(z.label) + 16;
-      rect(z.x - tw * 0.5, z.y - z.r - 24, tw, 20, 10);
+      rect(z.x - tw * 0.5, z.y - z.r - 24, tw, 20, 10); // label
       fill(235, 250, 242);
       textAlign(CENTER, CENTER);
       text(z.label, z.x, z.y - z.r - 14);
@@ -2023,7 +2023,7 @@ function drawWellnessBodyModel(pose, limbStates) {
     ctx.shadowColor = style.glow;
     ctx.shadowBlur = 18;
     ctx.strokeStyle = style.stroke;
-    ctx.lineWidth = 6.5;
+    ctx.lineWidth = 11;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
@@ -2054,7 +2054,7 @@ function drawWellnessBodyModel(pose, limbStates) {
     ellipse(p.x, p.y, 18 + breathPulse, 18 + breathPulse);
 
     fill(r, g, b, 225);
-    ellipse(p.x, p.y, 10, 10);
+    ellipse(p.x, p.y, 14, 14);
 
     fill(245, 255, 250, 230);
     ellipse(p.x, p.y, 4.5, 4.5);
@@ -2254,409 +2254,326 @@ function updatePoseTimer(bestPose) {
 }
 
 // ---------------- Main Render Loop ----------------
+// ---------------- Pastel palette (lavender / rose / plum, analog + soft mint as "correct") ----------------
+const PAL = {
+  plum: [46, 33, 66],
+  plumSoft: [74, 55, 102],
+  lilac: [199, 180, 239],
+  rose: [244, 166, 198],
+  cream: [251, 245, 252],
+  ink: [52, 36, 74],
+  inkSoft: [118, 96, 140],
+  good: [126, 216, 176],
+  near: [255, 192, 122],
+  bad: [255, 134, 154],
+};
+const pc = (a, al = 255) => color(a[0], a[1], a[2], al);
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function toggleFullscreen() {
+  const el = document.documentElement;
+  if (!isFullscreen()) (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+  else (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+}
+
+// Smooth keypoints over frames so tracking is steadier and easier to match
+let smoothPose = null;
+function smoothBest(p) {
+  if (!p) { smoothPose = null; return null; }
+  if (!smoothPose) smoothPose = {};
+  const out = Object.assign(Object.create(Object.getPrototypeOf(p)), p);
+  for (const k of Object.keys(p)) {
+    const v = p[k];
+    if (!v || typeof v !== "object" || !Number.isFinite(v.x)) continue;
+    const prev = smoothPose[k];
+    const c = v.c ?? 1;
+    if (prev && c > 0.15) {
+      const a = 0.45;
+      out[k] = { ...v, x: prev.x + (v.x - prev.x) * a, y: prev.y + (v.y - prev.y) * a, c: Math.max(c, prev.c * 0.85) };
+    } else if (prev && c <= 0.15) {
+      out[k] = { ...prev, c: prev.c * 0.8 };
+    }
+    smoothPose[k] = out[k];
+  }
+  return out;
+}
+
 function draw() {
   const t = millis() * 0.001;
   drawCalmBackground();
   if (!cam) return;
 
   uiButtons = [];
-  const best = bodyPose?.hasResult() ? bodyPose.getBest() : null;
+  const raw = bodyPose?.hasResult() ? bodyPose.getBest() : null;
+  const best = smoothBest(raw);
   updatePoseTimer(best);
 
-  const pad = 20;
-  const topBarH = 52;
+  const fs = isFullscreen();
+  const pad = fs ? 14 : 20;
+  const topBarH = fs ? 0 : 72;
+  const big = Math.max(1, Math.min(width / 1280, height / 800)); // text scale
 
-  // --- Clean top bar ---
-  push();
-  noStroke();
-  fill(230, 250, 238);
-  textSize(20);
-  textStyle(BOLD);
-  textAlign(LEFT, CENTER);
-  text("Hjemme Øvelser", pad + 4, 12 + topBarH * 0.5);
-  let btnX = pad + 4 + textWidth("Hjemme Øvelser") + 28;
-  textStyle(NORMAL);
-  const btnY = 20;
-  const btnH = 36;
-  textSize(12);
-  fill(175, 220, 195);
-  text("Baggrund", btnX, 12 + topBarH * 0.5);
-  btnX += textWidth("Baggrund") + 10;
-  for (let i = 0; i < CAM_BGS.length; i++) {
-    const b = CAM_BGS[i];
-    const cx = btnX + 16, cy = btnY + btnH / 2;
-    const ctx = drawingContext;
-    if (b.colors) {
-      const g = ctx.createLinearGradient(cx - 14, cy - 14, cx + 14, cy + 14);
-      b.colors.forEach((c, k) => g.addColorStop(k / (b.colors.length - 1), c));
-      ctx.fillStyle = g;
-    } else ctx.fillStyle = "#3a4a44";
-    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill();
-    if (!b.colors) { fill(255); textAlign(CENTER, CENTER); textSize(13); text("📷", cx, cy + 1); }
-    noFill();
-    stroke(camBgIndex === i ? color(255) : color(255, 255, 255, 40));
-    strokeWeight(camBgIndex === i ? 2.5 : 1);
-    circle(cx, cy, 34);
+  const pill = (x, y, label, active, onClick, w0) => {
+    textSize(18);
+    const w = w0 || textWidth(label) + 36;
     noStroke();
-    const idx = i;
-    uiButtons.push({ x: cx - 17, y: cy - 17, w: 34, h: 34, onClick: () => {
-      camBgIndex = idx;
-      removeBackgroundEnabled = !!CAM_BGS[idx].colors;
-    } });
-    btnX += 40;
-  }
-  const icon = (x, label, active, onClick) => {
-    textSize(13);
-    const w = textWidth(label) + 22;
-    fill(active ? color(68, 168, 122) : color(255, 255, 255, 22));
-    rect(x - w, btnY, w, btnH, 18);
-    fill(255);
+    fill(active ? pc(PAL.rose) : pc(PAL.cream, 40));
+    rect(x, y, w, 48, 24);
+    fill(active ? pc(PAL.ink) : pc(PAL.cream));
     textAlign(CENTER, CENTER);
-    text(label, x - w / 2, btnY + btnH / 2);
-    uiButtons.push({ x: x - w, y: btnY, w, h: btnH, onClick });
-    return x - w - 8;
+    text(label, x + w / 2, y + 24);
+    uiButtons.push({ x, y, w, h: 48, onClick });
+    return w;
   };
-  let rx = width - pad;
-  rx = icon(rx, "⚙ Indstillinger", showSettings, () => (showSettings = !showSettings));
-  rx = icon(rx, voiceEnabled ? "🔊" : "🔇", voiceEnabled, () => {
-    voiceEnabled = !voiceEnabled;
-    if (!voiceEnabled) stopDanishVoice();
-    else announceCurrentPose();
-  });
-  rx = icon(rx, "🗣 Gentag", false, () => { voiceEnabled = true; announceCurrentPose(); });
-  pop();
 
-  // --- Main Content Area: Segmented Wellness Camera (Left) + Guidelines (Right) ---
-  const contentY = 12 + topBarH + 14;
-  const camW = 640;
-  const camH = 480;
+  // --- Top bar (hidden in fullscreen) ---
+  if (!fs) {
+    push();
+    noStroke();
+    fill(pc(PAL.cream));
+    textSize(26);
+    textStyle(BOLD);
+    textAlign(LEFT, CENTER);
+    text("Hjemme Øvelser", pad + 4, 12 + topBarH * 0.5);
+    textStyle(NORMAL);
+    let rx = width - pad;
+    const btnY = 12 + topBarH * 0.5 - 24;
+    textSize(18);
+    const items = [
+      ["⛶ Fuld skærm", false, toggleFullscreen],
+      ["⚙ Indstillinger", showSettings, () => (showSettings = !showSettings)],
+      [voiceEnabled ? "🔊" : "🔇", voiceEnabled, () => { voiceEnabled = !voiceEnabled; if (!voiceEnabled) stopDanishVoice(); else announceCurrentPose(); }],
+      ["🗣 Gentag", false, () => { voiceEnabled = true; announceCurrentPose(); }],
+    ];
+    for (const [l, a, f] of items) {
+      const w = textWidth(l) + 36;
+      rx -= w;
+      pill(rx, btnY, l, a, f, w);
+      rx -= 10;
+    }
+    pop();
+  }
+
+  // --- Layout: big camera left, illustration right ---
+  const barH = fs ? 0 : (showSettings ? 2 : 1) * 58 + 14;
+  const contentY = pad + topBarH;
+  const availH = height - contentY - pad - (fs ? 0 : barH + 12);
+  const camAreaW = (width - pad * 3) * (fs ? 0.7 : 0.64);
+  const s = Math.max(0.3, Math.min(camAreaW / CAM_W, availH / CAM_H));
+  const camW = CAM_W * s;
+  const camH = CAM_H * s;
+  const camX = pad;
+  const camY = contentY + (availH - camH) / 2;
+
+  const limbVals = Object.values(currentLimbStates);
+  const anyOrangeOrGreen = limbVals.includes("orange") || limbVals.includes("green");
+  const stateCol = isPoseMatched ? PAL.good : anyOrangeOrGreen ? PAL.near : PAL.bad;
 
   push();
-  translate(pad, contentY);
-
-  // Soft wellness frame
-  fill(18, 42, 32, 200);
+  translate(camX, camY);
   noStroke();
-  rect(-6, -6, camW + 12, camH + 12, 18);
-
-  // Clip rounded camera view
+  fill(pc(PAL.plum, 200));
+  rect(-6, -6, camW + 12, camH + 12, 26);
   drawingContext.save();
   drawingContext.beginPath();
-  drawingContext.roundRect(0, 0, camW, camH, 14);
+  drawingContext.roundRect(0, 0, camW, camH, 22);
   drawingContext.clip();
-
+  push();
+  scale(s);
   if (removeBackgroundEnabled) {
-    drawCamBackground(0, 0, camW, camH, t);
-
-    // 2. Draw segmented person silhouette (background removed) if ready, else soft-blended camera
+    drawCamBackground(0, 0, CAM_W, CAM_H, t);
     if (segmentationReady && personLayerCanvas) {
-      drawingContext.drawImage(personLayerCanvas, 0, 0, camW, camH);
+      drawingContext.drawImage(personLayerCanvas, 0, 0, CAM_W, CAM_H);
     } else {
       drawingContext.globalAlpha = 0.42;
-      image(cam, 0, 0, camW, camH);
+      image(cam, 0, 0, CAM_W, CAM_H);
       drawingContext.globalAlpha = 1.0;
     }
   } else {
-    image(cam, 0, 0, camW, camH);
+    image(cam, 0, 0, CAM_W, CAM_H);
   }
-
-  // Draw target alignment circles & Wellness Body Skeleton (Red -> Orange -> Green per limb)
   if (best) {
     drawPoseTargetGuides(best);
     drawWellnessBodyModel(best, currentLimbStates);
   }
+  pop();
   drawingContext.restore();
 
-  // Determine overall border wellness color (Green / Orange / Red)
-  const limbVals = Object.values(currentLimbStates);
-  const anyOrangeOrGreen =
-    limbVals.includes("orange") || limbVals.includes("green");
-  const borderCol = isPoseMatched
-    ? color(115, 232, 172, 220)
-    : anyOrangeOrGreen
-    ? color(248, 184, 98, 205)
-    : color(232, 114, 114, 195);
-
   noFill();
-  stroke(borderCol);
-  strokeWeight(4.5);
-  rect(0, 0, camW, camH, 14);
+  stroke(pc(stateCol, 230));
+  strokeWeight(8);
+  rect(0, 0, camW, camH, 22);
 
-  // Top-left status pill showing Red / Orange / Green state legend
+  // Big feedback + progress at the bottom of the camera
+  const fbH = 34 * big + 46;
+  const fbY = camH - fbH - 16;
   noStroke();
-  fill(16, 36, 28, 210);
-  rect(14, 14, 385, 38, 12);
-
-  fill(borderCol);
-  ellipse(32, 33, 12, 12);
-  fill(240, 252, 245);
-  textSize(13);
-  textAlign(LEFT, CENTER);
-  text(
-    celebrationRemaining > 0
-      ? "✨ Fuldført i harmoni (15s)"
-      : isPoseMatched
-      ? "🟢 Alle kropslinjer er grønne — hold roen"
-      : "🔴 Rød: Juster   🟠 Orange: Tæt på   🟢 Grøn: Rigtig",
-    48,
-    33
-  );
-
-  // Bottom 15s hold timer overlay inside video
-  const barY = camH - 68;
-  fill(16, 36, 28, 220);
-  rect(14, barY, camW - 28, 54, 12);
-
+  fill(pc(PAL.plum, 215));
+  rect(16, fbY, camW - 32, fbH, 20);
   const progress = constrain(holdSeconds / HOLD_TARGET_SECONDS, 0, 1);
-  fill(35, 68, 52);
-  rect(26, barY + 32, camW - 52, 12, 6);
-  fill(borderCol);
-  rect(26, barY + 32, (camW - 52) * progress, 12, 6);
-
-  fill(240, 252, 245);
-  textSize(13);
+  fill(pc(PAL.cream, 50));
+  rect(32, fbY + fbH - 26, camW - 64, 12, 6);
+  fill(pc(stateCol));
+  rect(32, fbY + fbH - 26, (camW - 64) * progress, 12, 6);
+  fill(pc(PAL.cream));
+  textSize(26 * big);
   textAlign(LEFT, CENTER);
-  text(currentFeedback, 26, barY + 16);
-
+  const fb = celebrationRemaining > 0 ? "✨ Flot! Videre til næste" : currentFeedback;
+  text(fb.length > 70 ? fb.slice(0, 68) + "…" : fb, 32, fbY + (fbH - 26) / 2 + 4, camW - 64 - 110 * big);
   textAlign(RIGHT, CENTER);
-  text(
-    `Holdt: ${holdSeconds.toFixed(1)}s / ${HOLD_TARGET_SECONDS.toFixed(0)}s`,
-    camW - 26,
-    barY + 16
-  );
-  pop();
+  textStyle(BOLD);
+  textSize(34 * big);
+  text(`${Math.ceil(Math.max(0, HOLD_TARGET_SECONDS - holdSeconds))}s`, camW - 32, fbY + (fbH - 26) / 2 + 4);
+  textStyle(NORMAL);
 
-  // --- Right Side Panel: Pose Illustration + Red/Orange/Green Guidelines ---
-  const panelX = pad * 2 + camW;
-  const panelW = Math.max(330, Math.min(470, width - panelX - pad));
-  const targetPose = YOGA_POSES[currentPoseIndex];
-
-  push();
-  translate(panelX, contentY);
-
-  fill(20, 44, 34, 225);
-  stroke(140, 225, 180, 65);
-  strokeWeight(1.5);
-  rect(0, 0, panelW, camH, 16);
-
-  noStroke();
-  fill(240, 255, 245);
-  textSize(19);
-  textAlign(LEFT, TOP);
-  text(targetPose.name, 18, 16);
-
-  fill(175, 220, 195);
-  textSize(12.5);
-  text(
-    `${MODES[currentModeIndex].label} • Øvelse ${currentPoseIndex + 1} af ${YOGA_POSES.length} • Fuldført ${completedPoses.size}`,
-    18,
-    42
-  );
-
-  // Prev / Next buttons
-  const navW = 36;
-  const navH = 30;
-  const prevX = panelW - 92;
-  const nextX = panelW - 50;
-  fill(38, 75, 58);
-  rect(prevX, 16, navW, navH, 8);
-  rect(nextX, 16, navW, navH, 8);
-  fill(255);
-  textSize(15);
-  textAlign(CENTER, CENTER);
-  text("←", prevX + navW * 0.5, 16 + navH * 0.5);
-  text("→", nextX + navW * 0.5, 16 + navH * 0.5);
-
-  uiButtons.push({
-    x: panelX + prevX,
-    y: contentY + 16,
-    w: navW,
-    h: navH,
-    onClick: () =>
-      goToPose((currentPoseIndex - 1 + YOGA_POSES.length) % YOGA_POSES.length),
-  });
-  uiButtons.push({
-    x: panelX + nextX,
-    y: contentY + 16,
-    w: navW,
-    h: navH,
-    onClick: () => goToPose((currentPoseIndex + 1) % YOGA_POSES.length),
-  });
-
-  // Cropped Yoga Pose Illustration
-  const imgBoxX = 18;
-  const imgBoxY = 66;
-  const imgBoxW = 145;
-  const imgBoxH = 172;
-
-  fill(248, 252, 249);
-  rect(imgBoxX, imgBoxY, imgBoxW, imgBoxH, 12);
-
-  const cropImg = targetPose.cropImg;
-  if (!cropImg && targetPose.emoji) {
+  if (sessionPaused) {
+    fill(pc(PAL.plum, 170));
+    rect(0, 0, camW, camH, 22);
+    fill(pc(PAL.cream));
     textAlign(CENTER, CENTER);
-    textSize(64);
-    text(targetPose.emoji, imgBoxX + imgBoxW * 0.5, imgBoxY + imgBoxH * 0.5 - 10);
-    fill(60, 110, 85);
-    textSize(11);
-    text(targetPose.subtitle || "", imgBoxX + 6, imgBoxY + imgBoxH - 30, imgBoxW - 12, 26);
+    textSize(54 * big);
+    text("⏸ Pause", camW / 2, camH / 2);
   }
-  if (cropImg) {
-    const scale = Math.min(
-      (imgBoxW - 14) / cropImg.width,
-      (imgBoxH - 14) / cropImg.height
-    );
-    const drawW = cropImg.width * scale;
-    const drawH = cropImg.height * scale;
-    const drawX = imgBoxX + (imgBoxW - drawW) * 0.5;
-    const drawY = imgBoxY + (imgBoxH - drawH) * 0.5;
-    image(cropImg, drawX, drawY, drawW, drawH);
-  }
-
-  const descX = imgBoxX + imgBoxW + 14;
-  const descW = panelW - descX - 18;
-  fill(135, 232, 180);
-  textSize(12);
-  textAlign(LEFT, TOP);
-  text("MINDFUL GUIDE:", descX, imgBoxY + 4);
-
-  fill(232, 246, 238);
-  textSize(13.5);
-  textLeading(19);
-  text(targetPose.instruction, descX, imgBoxY + 24, descW, 145);
-
-  // --- Guidelines Checklist with Red / Orange / Green states ---
-  const guideY = imgBoxY + imgBoxH + 14;
-  fill(240, 255, 245);
-  textSize(13.5);
-  textAlign(LEFT, TOP);
-  text("Kropsdele & Præcision (Rød → Orange → Grøn):", 18, guideY);
-
-  const listStartY = guideY + 24;
-  const rowH = 36;
-  const guidelinesToShow =
-    currentGuidelines.length > 0
-      ? currentGuidelines
-      : [
-          { label: "Træd ind foran kameraet", state: "red" },
-          { label: "Følg kropslinjerne mod den grønne zone", state: "red" },
-          { label: `Hold stillingen roligt i ${HOLD_TARGET_SECONDS} sekunder`, state: "red" },
-        ];
-
-  for (let i = 0; i < guidelinesToShow.length; i++) {
-    const g = guidelinesToShow[i];
-    const ry = listStartY + i * (rowH + 6);
-    const st = g.state || (g.passed ? "green" : "red");
-
-    if (st === "green") {
-      fill(32, 92, 64, 225);
-      stroke(115, 232, 172);
-    } else if (st === "orange") {
-      fill(88, 66, 32, 220);
-      stroke(248, 184, 98);
-    } else {
-      fill(78, 38, 42, 210);
-      stroke(232, 114, 114, 165);
-    }
-    strokeWeight(1.5);
-    rect(18, ry, panelW - 36, rowH, 10);
-
-    noStroke();
-    textSize(14);
-    textAlign(LEFT, CENTER);
-    const badge = st === "green" ? "🟢" : st === "orange" ? "🟠" : "🔴";
-    text(badge, 30, ry + rowH * 0.5);
-
-    fill(245, 252, 248);
-    textSize(12.8);
-    text(g.label, 56, ry + rowH * 0.5);
-  }
-
-  // Bottom 15-second status banner in right card
-  const timerBoxY = camH - 56;
-  fill(
-    isPoseMatched
-      ? color(32, 96, 66)
-      : anyOrangeOrGreen
-      ? color(85, 64, 32)
-      : color(75, 36, 40)
-  );
-  stroke(borderCol);
-  strokeWeight(2);
-  rect(18, timerBoxY, panelW - 36, 42, 12);
-
-  noStroke();
-  fill(255);
-  textSize(14.5);
-  textAlign(CENTER, CENTER);
-  const remaining = Math.max(0, HOLD_TARGET_SECONDS - holdSeconds);
-  text(
-    celebrationRemaining > 0
-      ? "✨ Fuldført! Glider videre til næste stilling..."
-      : isPoseMatched
-      ? `🌿 Hold roen i grøn: ${remaining.toFixed(1)} sek. tilbage`
-      : anyOrangeOrGreen
-      ? "🟠 Næsten på plads — finjustér de orange linjer til grøn"
-      : `🔴 Følg stemmen for at samle linjerne i grøn (${HOLD_TARGET_SECONDS}s)`,
-    panelW * 0.5,
-    timerBoxY + 21
-  );
-
   pop();
 
-  drawSessionBar(pad, contentY + camH + 16);
+  // --- Right panel: illustration first, minimal big text ---
+  const panelX = camX + camW + pad;
+  const panelW = width - panelX - pad;
+  const panelY = camY;
+  const panelH = camH;
+  const targetPose = YOGA_POSES[currentPoseIndex];
+  push();
+  translate(panelX, panelY);
+  noStroke();
+  fill(pc(PAL.cream, 245));
+  rect(0, 0, panelW, panelH, 26);
+
+  const headH = 30 * big + 30;
+  fill(pc(PAL.ink));
+  textAlign(LEFT, CENTER);
+  textStyle(BOLD);
+  textSize(Math.min(30 * big, panelW / 14));
+  text(targetPose.name, 22, 14 + headH / 2, panelW - 44);
+  textStyle(NORMAL);
+
+  // Illustration
+  const navH = 64;
+  const imgX = 16, imgY = headH + 18, imgW = panelW - 32, imgH = panelH - imgY - navH - 30;
+  fill(pc(PAL.lilac, 70));
+  rect(imgX, imgY, imgW, imgH, 20);
+  const cropImg = targetPose.cropImg;
+  if (cropImg) {
+    const sc = Math.min((imgW - 20) / cropImg.width, (imgH - 20) / cropImg.height);
+    const dw = cropImg.width * sc, dh = cropImg.height * sc;
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.roundRect(imgX + (imgW - dw) / 2, imgY + (imgH - dh) / 2, dw, dh, 16);
+    drawingContext.clip();
+    image(cropImg, imgX + (imgW - dw) / 2, imgY + (imgH - dh) / 2, dw, dh);
+    drawingContext.restore();
+  } else if (targetPose.emoji) {
+    textAlign(CENTER, CENTER);
+    textSize(Math.min(imgW, imgH) * 0.45);
+    text(targetPose.emoji, imgX + imgW / 2, imgY + imgH / 2);
+  }
+
+  // Nav: big prev / counter / next
+  const ny = panelH - navH - 16;
+  const nb = (x, label, onClick) => {
+    fill(pc(PAL.rose));
+    rect(x, ny, navH, navH, 32);
+    fill(pc(PAL.ink));
+    textAlign(CENTER, CENTER);
+    textSize(30);
+    text(label, x + navH / 2, ny + navH / 2);
+    uiButtons.push({ x: panelX + x, y: panelY + ny, w: navH, h: navH, onClick });
+  };
+  nb(16, "←", () => goToPose((currentPoseIndex - 1 + YOGA_POSES.length) % YOGA_POSES.length));
+  nb(panelW - 16 - navH, "→", () => goToPose((currentPoseIndex + 1) % YOGA_POSES.length));
+  fill(pc(PAL.inkSoft));
+  textAlign(CENTER, CENTER);
+  textSize(22 * big);
+  text(`${currentPoseIndex + 1} / ${YOGA_POSES.length}`, panelW / 2, ny + navH / 2);
+  pop();
+
+  // Floating exit button in fullscreen
+  if (fs) {
+    push();
+    textSize(18);
+    const l = "✕ Luk fuld skærm";
+    const w = textWidth(l) + 36;
+    pill(camX + 16, camY + 16, l, false, toggleFullscreen, w);
+    pop();
+  } else {
+    drawSessionBar(pad, height - pad - barH);
+  }
 }
 
 // ---------------- Bottom session bar: mode, strictness, hold time, pause, sound ----------------
 function drawSessionBar(pad, y) {
-  const h = 40;
+  const h = 46;
   push();
-  fill(22, 46, 36, 215);
-  stroke(140, 225, 180, 65);
-  strokeWeight(1);
-  rect(pad, y, width - pad * 2, (h + 6) * (showSettings && width < 1500 ? 2 : 1) + 10, 14);
+  noStroke();
+  fill(pc(PAL.plum, 210));
+  rect(pad, y, width - pad * 2, (showSettings ? 2 : 1) * 58 + 14, 22);
 
-  let x = pad + 12;
-  let by = y + 8;
+  let x = pad + 14;
+  let by = y + 12;
   const wrap = (w) => {
-    if (x + w > width - pad - 12) {
-      x = pad + 12;
-      by += h + 6;
-    }
+    if (x + w > width - pad - 14) { x = pad + 14; by += h + 12; }
   };
-  const btn = (label, active, onClick, tone) => {
-    textSize(12.5);
-    const w = textWidth(label) + 20;
+  const btn = (label, active, onClick) => {
+    textSize(17);
+    const w = textWidth(label) + 30;
     wrap(w);
-    fill(active ? color(68, 168, 122) : tone || color(32, 62, 48, 200));
-    stroke(active ? color(155, 245, 200) : color(140, 210, 175, 50));
-    strokeWeight(1);
-    rect(x, by, w, h, 10);
     noStroke();
-    fill(245, 255, 250);
+    fill(active ? pc(PAL.rose) : pc(PAL.cream, 34));
+    rect(x, by, w, h, 23);
+    fill(active ? pc(PAL.ink) : pc(PAL.cream));
     textAlign(CENTER, CENTER);
     text(label, x + w * 0.5, by + h * 0.5);
     uiButtons.push({ x, y: by, w, h, onClick });
-    x += w + 6;
+    x += w + 8;
   };
   const sep = (label) => {
-    noStroke();
-    fill(175, 220, 195);
-    textSize(11.5);
+    fill(pc(PAL.lilac));
+    textSize(16);
     textAlign(LEFT, CENTER);
-    wrap(textWidth(label) + 60);
+    wrap(textWidth(label) + 80);
     text(label, x + 4, by + h * 0.5);
-    x += textWidth(label) + 12;
+    x += textWidth(label) + 16;
+  };
+  const swatch = (i) => {
+    const b = CAM_BGS[i];
+    wrap(h + 8);
+    const cx = x + h / 2, cy = by + h / 2;
+    const ctx = drawingContext;
+    if (b.colors) {
+      const g = ctx.createLinearGradient(cx - 20, cy - 20, cx + 20, cy + 20);
+      b.colors.forEach((c, k) => g.addColorStop(k / (b.colors.length - 1), c));
+      ctx.fillStyle = g;
+    } else ctx.fillStyle = "#5a4a6e";
+    ctx.beginPath(); ctx.arc(cx, cy, h / 2 - 3, 0, Math.PI * 2); ctx.fill();
+    if (!b.colors) { fill(255); textAlign(CENTER, CENTER); textSize(18); text("📷", cx, cy + 1); }
+    noFill();
+    stroke(camBgIndex === i ? pc(PAL.rose) : pc(PAL.cream, 50));
+    strokeWeight(camBgIndex === i ? 3 : 1);
+    circle(cx, cy, h);
+    noStroke();
+    uiButtons.push({ x, y: by, w: h, h, onClick: () => { camBgIndex = i; removeBackgroundEnabled = !!CAM_BGS[i].colors; } });
+    x += h + 8;
   };
 
   sep("Hvor gør det ondt?");
   MODES.forEach((m, i) => btn(m.label, currentModeIndex === i, () => setMode(i)));
   if (!showSettings) { pop(); return; }
+  x = pad + 14; by += h + 12;
+  sep("Baggrund");
+  CAM_BGS.forEach((_, i) => swatch(i));
   x += 10;
   sep("Præcision");
-  STRICTNESS_LEVELS.forEach((l, i) =>
-    btn(l.label, strictnessIndex === i, () => (strictnessIndex = i))
-  );
+  STRICTNESS_LEVELS.forEach((l, i) => btn(l.label, strictnessIndex === i, () => (strictnessIndex = i)));
   x += 10;
   sep("Hold");
   HOLD_OPTIONS.forEach((sec, i) =>
@@ -2667,15 +2584,9 @@ function drawSessionBar(pad, y) {
     })
   );
   x += 10;
-  btn(sessionPaused ? "▶ Fortsæt" : "⏸ Pause", sessionPaused, togglePause);
-  btn(ambientEnabled ? "🎵 Rolig lyd: TIL" : "🎵 Rolig lyd", ambientEnabled, () =>
-    setAmbient(!ambientEnabled)
-  );
-  btn(showCameraGuides ? "◎ Mål: TIL" : "◎ Mål: FRA", showCameraGuides, () => {
-    showCameraGuides = !showCameraGuides;
-  });
-  btn(closeUpMode ? "🪑 Tæt på: TIL" : "🪑 Tæt på", closeUpMode, () => {
-    closeUpMode = !closeUpMode;
-  });
+  btn(sessionPaused ? "▶" : "⏸", sessionPaused, togglePause);
+  btn("🎵", ambientEnabled, () => setAmbient(!ambientEnabled));
+  btn("◎ Mål", showCameraGuides, () => { showCameraGuides = !showCameraGuides; });
+  btn("🪑 Tæt på", closeUpMode, () => { closeUpMode = !closeUpMode; });
   pop();
 }

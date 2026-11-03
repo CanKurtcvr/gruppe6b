@@ -3,9 +3,9 @@
 
 // Strictness: multiplies every green/orange tolerance. Lower = stricter.
 const STRICTNESS_LEVELS = [
-  { id: "gentle", label: "Blid", factor: 1.15 },
-  { id: "normal", label: "Normal", factor: 0.85 },
-  { id: "strict", label: "Striks", factor: 0.62 },
+  { id: "gentle", label: "Blid", factor: 1.35 },
+  { id: "normal", label: "Normal", factor: 1.05 },
+  { id: "strict", label: "Striks", factor: 0.75 },
 ];
 let strictnessIndex = 1;
 function strictFactor() {
