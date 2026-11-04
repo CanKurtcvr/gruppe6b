@@ -174,6 +174,88 @@ function playWellnessChime(type = "soft") {
 let speechToken = 0;
 const ttsCache = new Map(); // text -> Promise<objectURL>
 
+// Google AI Studio API keys with automatic rotation when usage/quota is reached on a key.
+const __GEMINI_TTS_KEYS = [
+  "AQ.Ab8RN6LZb6SGLezrwR2sN_rayqSXTRn932SLyhYVv7-Hgd7o0w",
+  "AQ.Ab8RN6IDgnrGlQiLw_hV3FAcbYgjQ2juxtBLLkTGyd-0muAUmw",
+  "AIzaSyBiqw_NJro6hKM8aoWHV_lP3xWp9382cSA",
+];
+const __GEMINI_TTS_MODELS = [
+  "gemini-3.8-flash-lite-tts",
+  "gemini-3.8-flash-tts",
+];
+const __DANISH_CALM_VOICE = "Sulafat";
+const __DANISH_VOICE_STYLE =
+  "Calm, warm, gentle and soothing female Danish yoga and mindfulness instructor. Speak naturally in clear Danish (da-DK) at a relaxed, unhurried pace.";
+let __activeGeminiKeyIdx = 0;
+
+async function fetchDirectGeminiTtsBlob(text) {
+  let lastErr = new Error("Gemini TTS failed");
+  const startIdx = __activeGeminiKeyIdx % __GEMINI_TTS_KEYS.length;
+
+  for (const model of __GEMINI_TTS_MODELS) {
+    for (let offset = 0; offset < __GEMINI_TTS_KEYS.length; offset++) {
+      const keyIdx = (startIdx + offset) % __GEMINI_TTS_KEYS.length;
+      const apiKey = __GEMINI_TTS_KEYS[keyIdx];
+      try {
+        const res = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/interactions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: JSON.stringify({
+              model,
+              store: false,
+              input: [
+                {
+                  type: "user_input",
+                  content: [
+                    {
+                      type: "text",
+                      text,
+                      annotations: [
+                        {
+                          type: "speech_metadata",
+                          style: __DANISH_VOICE_STYLE,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+              response_format: { type: "audio" },
+              generation_config: {
+                speech_config: [{ voice: __DANISH_CALM_VOICE }],
+              },
+            }),
+          }
+        );
+        if (!res.ok) throw new Error("Gemini status " + res.status);
+        const data = await res.json();
+        for (const step of data.steps || []) {
+          for (const part of step.content || []) {
+            if (part.type === "audio" && part.data) {
+              const bin = atob(part.data);
+              const bytes = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+              __activeGeminiKeyIdx = keyIdx;
+              return new Blob([bytes], { type: part.mime_type || "audio/wav" });
+            }
+          }
+        }
+        throw new Error("Empty Gemini audio");
+      } catch (err) {
+        lastErr = err;
+        __activeGeminiKeyIdx = (keyIdx + 1) % __GEMINI_TTS_KEYS.length;
+      }
+    }
+  }
+  throw lastErr;
+}
+
 function fetchTtsUrl(text) {
   if (ttsCache.has(text)) return ttsCache.get(text);
   const p = fetch(`/api/public/tts?text=${encodeURIComponent(text)}`)
@@ -181,6 +263,7 @@ function fetchTtsUrl(text) {
       if (!r.ok) throw new Error("tts " + r.status);
       return r.blob();
     })
+    .catch(() => fetchDirectGeminiTtsBlob(text))
     .then((b) => URL.createObjectURL(b));
   p.catch(() => ttsCache.delete(text));
   ttsCache.set(text, p);
@@ -305,7 +388,16 @@ function introduceCurrentPose(restSeconds = 0) {
 
 const COUNT_WORDS = ["", "En.", "To.", "Tre.", "Fire.", "Fem."];
 function prefetchCountdown() {
-  for (const w of COUNT_WORDS) if (w) fetchTtsUrl(w).catch(() => {});
+  // Prefetch from 5 down to 1 with a short stagger so the opening pose intro gets priority
+  // and we avoid firing 6 simultaneous TTS requests at startup.
+  [5, 4, 3, 2, 1].forEach((n, idx) => {
+    const w = COUNT_WORDS[n];
+    if (w) {
+      setTimeout(() => {
+        fetchTtsUrl(w).catch(() => {});
+      }, 900 + idx * 450);
+    }
+  });
 }
 function announcePreparationNumber(number) {
   if (!voiceEnabled || !COUNT_WORDS[number]) return;
