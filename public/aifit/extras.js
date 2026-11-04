@@ -14,6 +14,8 @@ function strictFactor() {
 
 // Hold-time options
 const HOLD_OPTIONS = [15, 30, 45];
+// Pause between exercises (seconds) — the user asked for roughly 20–30 s.
+const REST_SECONDS = 20;
 let holdOptionIndex = 0;
 
 // Modes: full yoga flow, or stretches focused on where it hurts
@@ -62,15 +64,23 @@ function createExercisePreparation() {
     remaining: 5,
     introElapsed: 0,
     readingSeconds: 4,
-    start(readingSeconds = 4) {
-      this.phase = "intro";
+    restRemaining: 0,
+    start(readingSeconds = 4, restSeconds = 0) {
+      this.phase = restSeconds > 0 ? "rest" : "intro";
+      this.restRemaining = restSeconds;
       this.remaining = 5;
       this.introElapsed = 0;
       this.readingSeconds = readingSeconds;
     },
+    skipRest() {
+      if (this.phase === "rest") { this.restRemaining = 0; this.phase = "intro"; }
+    },
     tick(dt, { paused = false, speaking = false, voice = true } = {}) {
       if (paused) return;
-      if (this.phase === "intro") {
+      if (this.phase === "rest") {
+        this.restRemaining = Math.max(0, this.restRemaining - dt);
+        if (this.restRemaining <= 0) this.phase = "intro";
+      } else if (this.phase === "intro") {
         this.introElapsed += dt;
         if (voice ? !speaking : this.introElapsed >= this.readingSeconds) {
           this.phase = "countdown";
