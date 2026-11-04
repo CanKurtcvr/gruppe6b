@@ -355,14 +355,10 @@ async function initBackgroundSegmentation() {
       personLayerCtx.translate(w, 0);
       personLayerCtx.scale(-1, 1);
 
-      // Slightly contracted, softly feathered mask: hides halo pixels at the edge
-      personLayerCtx.filter = "blur(3px) contrast(1.6)";
+      // Softly feathered mask so the edge blends instead of smearing
+      personLayerCtx.filter = "blur(4px)";
       personLayerCtx.drawImage(maskCanvas, 0, 0, w, h);
-      personLayerCtx.filter = "blur(1.5px)";
-      personLayerCtx.globalCompositeOperation = "destination-in";
-      personLayerCtx.drawImage(personLayerCanvas, 0, 0);
       personLayerCtx.filter = "none";
-      personLayerCtx.globalCompositeOperation = "source-over";
 
       // Keep only the person pixels
       personLayerCtx.globalCompositeOperation = "source-in";
