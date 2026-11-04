@@ -281,25 +281,36 @@ function announceCurrentPose() {
   lastHintSpokenAt = millis();
 }
 
-function introduceCurrentPose() {
+const REST_LINES = [
+  "Godt gået... hold en lille pause. Ryst skuldrene løst og træk vejret dybt.",
+  "Dejligt... nu får du en pause. Slip kroppen og lad åndedrættet falde til ro.",
+  "Fint arbejde... tag en kort pause, og drik gerne lidt vand.",
+];
+function introduceCurrentPose(restSeconds = 0) {
   const p = YOGA_POSES[currentPoseIndex];
   if (!p) return;
-  exercisePreparation.start(Math.min(12, Math.max(4, (p.instruction || p.voiceIntro || "").split(/\s+/).length / 2.5)));
+  exercisePreparation.start(Math.min(12, Math.max(4, (p.instruction || p.voiceIntro || "").split(/\s+/).length / 2.5)), restSeconds);
   lastPreparationNumber = 0;
   lastDistanceState = "ok";
   distanceOkSince = 0;
   currentGuidelines = [];
+  if (restSeconds > 0) {
+    currentFeedback = "Pause — slap af";
+    if (!sessionPaused) speakDanish(REST_LINES[Math.floor(Math.random() * REST_LINES.length)], { interrupt: true });
+    return;
+  }
   currentFeedback = "Se øvelsen — find din stilling";
   if (!sessionPaused) announceCurrentPose();
 }
 
+const COUNT_WORDS = ["", "En.", "To.", "Tre.", "Fire.", "Fem."];
+function prefetchCountdown() {
+  for (const w of COUNT_WORDS) if (w) fetchTtsUrl(w).catch(() => {});
+}
 function announcePreparationNumber(number) {
-  if (!voiceEnabled) return;
-  // Local short cues avoid generation delays between the five countdown beats.
-  stopDanishVoice();
-  isSpeaking = true;
-  const words = ["", "en", "to", "tre", "fire", "fem"];
-  speakWithBrowserFallback(words[number], speechToken, 1.15);
+  if (!voiceEnabled || !COUNT_WORDS[number]) return;
+  // Use the same warm AI voice as everything else (pre-fetched), so the count doesn't sound robotic.
+  speakDanish(COUNT_WORDS[number], { interrupt: true });
 }
 
 // ---------------- Real-time Background Removal (Selfie Segmentation) ----------------
@@ -317,13 +328,25 @@ async function initBackgroundSegmentation() {
     });
 
     selfieSegmentation.setOptions({
-      modelSelection: 1, // Landscape/general real-time model
+      modelSelection: 0, // General model: finer edges than the landscape model
     });
+
+    // Temporally smoothed mask: blends each new mask with the previous one so the
+    // edge between person and background stops flickering/smearing.
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = 640;
+    maskCanvas.height = 480;
+    const maskCtx = maskCanvas.getContext("2d");
 
     selfieSegmentation.onResults((results) => {
       if (!personLayerCtx || !results.segmentationMask) return;
       const w = personLayerCanvas.width;
       const h = personLayerCanvas.height;
+
+      maskCtx.globalCompositeOperation = "source-over";
+      maskCtx.globalAlpha = 0.6;
+      maskCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+      maskCtx.globalAlpha = 1;
 
       personLayerCtx.save();
       personLayerCtx.clearRect(0, 0, w, h);
@@ -332,9 +355,9 @@ async function initBackgroundSegmentation() {
       personLayerCtx.translate(w, 0);
       personLayerCtx.scale(-1, 1);
 
-      // Draw soft segmentation mask first
-      personLayerCtx.filter = "blur(2px)";
-      personLayerCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+      // Softly feathered mask so the edge blends instead of smearing
+      personLayerCtx.filter = "blur(4px)";
+      personLayerCtx.drawImage(maskCanvas, 0, 0, w, h);
       personLayerCtx.filter = "none";
 
       // Keep only the person pixels
@@ -1809,6 +1832,7 @@ async function setup() {
   await bodyPose.start();
   lastUpdateMs = millis();
 
+  prefetchCountdown();
   introduceCurrentPose();
 }
 
@@ -1942,6 +1966,14 @@ function mousePressed() {
   if (wellnessAudioCtx && wellnessAudioCtx.state === "suspended") {
     wellnessAudioCtx.resume();
   }
+  // Tapping anywhere outside a button skips the rest pause.
+  if (exercisePreparation.phase === "rest" && !sessionPaused &&
+      !uiButtons.some((b) => mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h)) {
+    exercisePreparation.skipRest();
+    currentFeedback = "Se øvelsen — find din stilling";
+    announceCurrentPose();
+    return false;
+  }
   // While the summary is up, only its own buttons respond.
   if (sessionSummaryActive) {
     for (const btn of uiButtons) {
@@ -2008,7 +2040,7 @@ function togglePause() {
   }
 }
 
-function goToPose(index) {
+function goToPose(index, restSeconds = 0) {
   lastFrameMatched = false;
   lastBreathCueAt = millis();
   currentPoseIndex = index;
@@ -2018,7 +2050,7 @@ function goToPose(index) {
   celebrationRemaining = 0;
   halfTimeAnnounced = false;
   matchStartAnnounced = false;
-  introduceCurrentPose();
+  introduceCurrentPose(restSeconds);
 }
 
 // ---------------- Wellness Styling for Body Lines (Red -> Orange -> Green) ----------------
@@ -2163,9 +2195,17 @@ function updatePoseTimer(bestPose) {
 
   if (sessionPaused) return;
   if (exercisePreparation.phase !== "active") {
+    const wasRest = exercisePreparation.phase === "rest";
     exercisePreparation.tick(dt, { speaking: isSpeaking, voice: voiceEnabled });
     isPoseMatched = false;
-    if (exercisePreparation.phase === "countdown") {
+    if (wasRest) {
+      if (exercisePreparation.phase === "intro") {
+        currentFeedback = "Se øvelsen — find din stilling";
+        if (voiceEnabled) announceCurrentPose();
+      } else {
+        currentFeedback = `Pause — ${Math.ceil(exercisePreparation.restRemaining)} s`;
+      }
+    } else if (exercisePreparation.phase === "countdown") {
       const number = Math.ceil(exercisePreparation.remaining);
       currentFeedback = "Gør dig klar";
       if (number !== lastPreparationNumber) {
@@ -2206,7 +2246,7 @@ function updatePoseTimer(bestPose) {
         speakDanish("Hele forløbet er fuldført... skønt klaret. Læn dig tilbage og nyd roen.", { interrupt: true });
         completedPoses = new Set();
       } else {
-        goToPose((currentPoseIndex + 1) % YOGA_POSES.length);
+        goToPose((currentPoseIndex + 1) % YOGA_POSES.length, REST_SECONDS);
       }
     }
     return;
@@ -2532,6 +2572,22 @@ function draw() {
   textSize(34 * big);
   text(preparing ? "" : `${Math.ceil(Math.max(0, HOLD_TARGET_SECONDS - holdSeconds))}s`, camW - 32, fbY + (fbH - 26) / 2 + 4);
   textStyle(NORMAL);
+
+  if (exercisePreparation.phase === "rest" && !sessionPaused) {
+    const r = Math.min(220, camH * 0.46);
+    fill(pc(PAL.lilac, 215));
+    circle(camW / 2, camH / 2 - 24, r);
+    fill(pc(PAL.plum));
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(Math.min(30, camH * 0.07));
+    text("Pause", camW / 2, camH / 2 - 24 - r * 0.25);
+    textSize(Math.min(80, camH * 0.18));
+    text(Math.ceil(exercisePreparation.restRemaining), camW / 2, camH / 2 - 14);
+    textStyle(NORMAL);
+    textSize(Math.min(18, camH * 0.04));
+    text("Tryk for at springe over", camW / 2, camH / 2 - 24 + r * 0.32);
+  }
 
   if (exercisePreparation.phase === "countdown" && !sessionPaused) {
     fill(pc(PAL.plum, 225));

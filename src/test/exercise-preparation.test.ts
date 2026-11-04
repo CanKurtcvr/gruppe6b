@@ -33,6 +33,16 @@ describe("Exercise preparation", () => {
     expect(preparation.remaining).toBe(5);
   });
 
+  it("rests 20 seconds between exercises before the next introduction", () => {
+    const preparation = create();
+    preparation.start(4, 20);
+    expect(preparation.phase).toBe("rest");
+    preparation.tick(19);
+    expect(preparation.phase).toBe("rest");
+    preparation.tick(1);
+    expect(preparation.phase).toBe("intro");
+  });
+
   it("keeps countdown paused and supplies reading time without voice", () => {
     const preparation = create();
     preparation.start(4);
