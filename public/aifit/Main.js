@@ -328,13 +328,25 @@ async function initBackgroundSegmentation() {
     });
 
     selfieSegmentation.setOptions({
-      modelSelection: 1, // Landscape/general real-time model
+      modelSelection: 0, // General model: finer edges than the landscape model
     });
+
+    // Temporally smoothed mask: blends each new mask with the previous one so the
+    // edge between person and background stops flickering/smearing.
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = 640;
+    maskCanvas.height = 480;
+    const maskCtx = maskCanvas.getContext("2d");
 
     selfieSegmentation.onResults((results) => {
       if (!personLayerCtx || !results.segmentationMask) return;
       const w = personLayerCanvas.width;
       const h = personLayerCanvas.height;
+
+      maskCtx.globalCompositeOperation = "source-over";
+      maskCtx.globalAlpha = 0.6;
+      maskCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+      maskCtx.globalAlpha = 1;
 
       personLayerCtx.save();
       personLayerCtx.clearRect(0, 0, w, h);
@@ -343,10 +355,14 @@ async function initBackgroundSegmentation() {
       personLayerCtx.translate(w, 0);
       personLayerCtx.scale(-1, 1);
 
-      // Draw soft segmentation mask first
-      personLayerCtx.filter = "blur(2px)";
-      personLayerCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+      // Slightly contracted, softly feathered mask: hides halo pixels at the edge
+      personLayerCtx.filter = "blur(3px) contrast(1.6)";
+      personLayerCtx.drawImage(maskCanvas, 0, 0, w, h);
+      personLayerCtx.filter = "blur(1.5px)";
+      personLayerCtx.globalCompositeOperation = "destination-in";
+      personLayerCtx.drawImage(personLayerCanvas, 0, 0);
       personLayerCtx.filter = "none";
+      personLayerCtx.globalCompositeOperation = "source-over";
 
       // Keep only the person pixels
       personLayerCtx.globalCompositeOperation = "source-in";
@@ -1820,6 +1836,7 @@ async function setup() {
   await bodyPose.start();
   lastUpdateMs = millis();
 
+  prefetchCountdown();
   introduceCurrentPose();
 }
 
@@ -1952,6 +1969,14 @@ function mousePressed() {
   audioUnlocked = true;
   if (wellnessAudioCtx && wellnessAudioCtx.state === "suspended") {
     wellnessAudioCtx.resume();
+  }
+  // Tapping anywhere outside a button skips the rest pause.
+  if (exercisePreparation.phase === "rest" && !sessionPaused &&
+      !uiButtons.some((b) => mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h)) {
+    exercisePreparation.skipRest();
+    currentFeedback = "Se øvelsen — find din stilling";
+    announceCurrentPose();
+    return false;
   }
   // While the summary is up, only its own buttons respond.
   if (sessionSummaryActive) {
