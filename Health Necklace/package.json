@@ -1,0 +1,12 @@
+{
+  "name": "health-necklace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Health Necklace: 1-button wearable voice assistant & Gemini AI speech interface built with p5.js.",
+  "scripts": {
+    "start": "python3 -m http.server 8080 --directory src",
+    "build": "node --check src/sketch.js && node --check src/gemini-assistant.js && node --check src/gemini-tts.js && node --check src/speech.js && node --check src/recognition.js && node --check src/sound.js && node --check src/portal/gamepad.js && node --check src/portal/portal.js && node --check src/portal/buttonEdge.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "sound": "say -v Sara -r 165 -o /tmp/du_er_67.aiff \"Du er 67 år gammel.\" && afconvert -f WAVE -d LEI16@44100 /tmp/du_er_67.aiff src/sounds/du_er_67.wav && afconvert -f m4af -d aac /tmp/du_er_67.aiff src/sounds/du_er_67.m4a"
+  }
+}

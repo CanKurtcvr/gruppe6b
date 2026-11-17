@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+  <title>Hjemme Øvelser</title>
+
+  <!-- Portal Base Styles -->
+  <link rel="stylesheet" href="https://madshobye.github.io/Portal/P1/portalBaseStyle.css" />
+
+  <!-- p5.js core library (v2.2.0 recommended for Portal) -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@2.2.0/lib/p5.js"></script>
+
+  <!-- Portal configuration: ensures portal scripts load cleanly on localhost -->
+  <script>
+    window.PORTAL_BASE_URL = "https://madshobye.github.io/Portal/P1/";
+  </script>
+
+  <!-- Portal runtime -->
+  <script src="https://madshobye.github.io/Portal/P1/portal/portal.js"></script>
+
+  <!-- MediaPipe Selfie Segmentation for real-time background removal -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg, #2e2142 0%, #4f3a70 50%, #3a2648 100%);
+      font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Exercise library & session state -->
+  <script src="extras.js"></script>
+  <script src="modules/state-and-distance.js"></script>
+  <script src="modules/voice-guide.js"></script>
+  <script src="modules/segmentation.js"></script>
+  <script src="modules/pose-grading.js"></script>
+  <script src="modules/yoga-poses.js"></script>
+  <script src="modules/scenery-and-controls.js"></script>
+  <script src="modules/body-renderer.js"></script>
+  <!-- Main render & coaching loop -->
+  <script src="Main.js"></script>
+</body>
+</html>
+

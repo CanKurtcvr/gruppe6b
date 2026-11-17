@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Knap-Taler & Siri Gemini AI — Vibecoding Gruppe 6</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <script src="https://cdn.jsdelivr.net/npm/p5@2.3.4/lib/p5.min.js"></script>
+    <script src="portal/buttonEdge.js"></script>
+    <script src="portal/portal.js"></script>
+    <script src="sound.js"></script>
+    <script src="gemini-tts.js"></script>
+    <script src="speech.js"></script>
+    <script src="recognition.js"></script>
+    <script src="gemini-assistant.js"></script>
+  </head>
+  <body>
+    <!-- Floating Settings / Control Interface -->
+    <div id="control-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>🎙️</span>
+          <span>Knap-Taler & AI Assistent</span>
+          <span id="button-status-pill" class="status-pill">Klar</span>
+        </div>
+        <button id="minimize-btn" class="close-btn" title="Skjul panel">✕</button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="tabs-nav">
+        <button id="tab-btn-fixed" class="tab-btn active" data-tab="tab-fixed">
+          <span>🔘</span>
+          <span>1-Knap Taler (Fast sætning)</span>
+        </button>
+        <button id="tab-btn-siri" class="tab-btn" data-tab="tab-siri">
+          <span>🌸</span>
+          <span>Sundhedsekspert 65+</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: Fast Sætning / Knap Taler -->
+      <div id="tab-fixed" class="tab-content active">
+        <div class="input-group">
+          <input
+            id="custom-text-input"
+            class="text-input"
+            type="text"
+            value="Du er 67 år gammel"
+            placeholder="Skriv eller indtal hvad knappen skal sige..."
+            autocomplete="off"
+          />
+          <button id="dictate-btn" class="action-btn record-btn" title="Sig noget (stemmeindtaling)">
+            <span id="mic-icon">🎤</span>
+            <span id="mic-label">Indtal</span>
+          </button>
+          <button id="test-speak-btn" class="action-btn" title="Afspil teksten nu">
+            <span>🔊</span>
+            <span>Prøv</span>
+          </button>
+        </div>
+
+        <!-- Quick Preset Chips -->
+        <div class="presets-bar">
+          <span class="preset-label">Hurtige valg:</span>
+          <button class="preset-chip" data-text="Du er 67 år gammel">Du er 67 år gammel</button>
+          <button class="preset-chip" data-text="Tillykke med fødselsdagen! 🎉">Fødselsdag 🎉</button>
+          <button class="preset-chip" data-text="Tryk på knappen igen! 🚀">Tryk igen 🚀</button>
+          <button class="preset-chip" data-text="Kaffepause nu! ☕">Kaffepause ☕</button>
+          <button class="preset-chip" data-text="Skål allesammen! 🍻">Skål! 🍻</button>
+        </div>
+
+        <div class="settings-row">
+          <div>
+            <label for="voice-select">Stemme: </label>
+            <select id="voice-select">
+              <option value="">Indlæser stemmer...</option>
+            </select>
+          </div>
+          <div>
+            <button id="fullscreen-btn" class="preset-chip" style="font-weight: 600;">⛶ Fuldskærm (F)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Siri / Google Gemini AI Voice Assistant -->
+      <div id="tab-siri" class="tab-content">
+        <div id="siri-container" class="siri-container state-idle">
+          <!-- Animated Siri Orb / Button -->
+          <div id="siri-orb-wrapper" class="siri-orb-wrapper" title="Tryk for at tale med Gemini">
+            <div class="siri-orb-glow"></div>
+            <button id="siri-orb-btn" class="siri-orb-btn">
+              <span id="siri-orb-icon">🎙️</span>
+            </button>
+          </div>
+
+          <div id="siri-caption" class="siri-caption">
+            Tryk på orben (eller den fysiske knap) og stil et spørgsmål
+          </div>
+
+          <!-- Conversation bubble -->
+          <div id="siri-dialog-box" class="siri-dialog-box">
+            <div id="siri-user-bubble" class="dialog-msg dialog-user">
+              <strong>Du:</strong> <span id="siri-user-text">Tryk og stil et sundhedsspørgsmål...</span>
+            </div>
+            <div id="siri-gemini-bubble" class="dialog-msg dialog-gemini">
+              <strong>Sundhedsekspert:</strong> <span id="siri-gemini-text">Hej! Jeg er din sundhedsekspert for kvinder over 65 år. Stil mig et spørgsmål om overgangsalder, knogler eller livskvalitet.</span>
+            </div>
+          </div>
+
+          <!-- Suggested prompts for women 65+ -->
+          <div class="siri-prompts">
+            <span class="preset-label" style="display: block; width: 100%;">Spørg om:</span>
+            <button class="preset-chip siri-prompt-btn" data-query="Hvordan holder jeg mine knogler stærke?">🦴 Stærke knogler</button>
+            <button class="preset-chip siri-prompt-btn" data-query="Gode råd mod hedeture og efter overgangsalderen">🌸 Overgangsalder råd</button>
+            <button class="preset-chip siri-prompt-btn" data-query="Hvad giver mere energi og livskvalitet i hverdagen?">✨ Bedre livskvalitet</button>
+            <button class="preset-chip siri-prompt-btn" data-query="Hvor meget D-vitamin og kalk har jeg brug for?">☀️ D-vitamin & kalk</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gemini API Key Selector with 3 team profiles -->
+      <div id="gemini-key-box" style="margin-top: 10px; padding: 10px 12px; background: rgba(67, 97, 238, 0.08); border: 1px solid rgba(67, 97, 238, 0.2); border-radius: 10px; font-size: 12px; display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-weight: 600; color: #3a0ca3;">✨ Vælg Gemini AI Nøgle</span>
+          <span id="gemini-active-user-badge" style="font-size: 11px; color: #059669; font-weight: 600;">Frederiks nøgle aktiv</span>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <select id="gemini-key-select" style="flex: 1; padding: 7px 10px; font-size: 12px; border: 1px solid #4361ee; border-radius: 6px; outline: none; background: white; font-weight: 500; cursor: pointer;">
+            <option value="Frederik">🔑 Frederiks nøgle (Aktiv Gemini Kvindestemme)</option>
+            <option value="Martin">🔑 Martins nøgle (Aktiv Gemini Kvindestemme)</option>
+            <option value="Can">🔑 Cans nøgle (Aktiv tekst / TTS kvote nået)</option>
+            <option value="custom">✏️ Indtast egen nøgle...</option>
+          </select>
+          <button id="test-gemini-key-btn" class="preset-chip" style="background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;">⚡ Test</button>
+        </div>
+        <div id="custom-key-container" style="display: none; margin-top: 6px; gap: 6px;">
+          <input id="gemini-key-input" type="password" placeholder="Indsæt din Gemini API-nøgle..." style="flex: 1; padding: 6px 10px; font-size: 12px; border: 1px solid #ccc; border-radius: 6px; outline: none; background: white;" />
+          <button id="save-gemini-key-btn" class="preset-chip" style="background: #4361ee; color: white; border: none; font-weight: 600; cursor: pointer;">Gem</button>
+        </div>
+        <div id="gemini-status-text" style="margin-top: 6px; font-size: 11px; color: #4b5563; font-weight: 500;">
+          Status: Forbundet med Frederiks nøgle (Gemini kvindestemme klar)
+        </div>
+      </div>
+    </div>
+
+    <!-- Toggle menu pill when minimized -->
+    <button id="toggle-panel-btn" class="toggle-menu-btn" style="display: none;">
+      ⚙️ Indstil knap & AI
+    </button>
+
+    <!-- First Click / Audio Activation Overlay -->
+    <div id="audio-unlock-overlay">
+      <div class="unlock-card">
+        <div class="unlock-title">🔊 Klik her for at starte</div>
+        <div class="unlock-sub">Browseren kræver ét klik for at aktivere lyden til knappen og assistenten</div>
+      </div>
+    </div>
+
+    <script src="sketch.js"></script>
+  </body>
+</html>

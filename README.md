@@ -1,26 +1,28 @@
-# Gruppe6b
+# Gruppe 6b — Projekter
 
-/skill:migrate-external-project Source: code archive. Migrate the attached project into Lovable.
+Dette repository indeholder to adskilte projekter:
 
-This project was built with [Lovable](https://lovable.dev).
+## 1. [`yoga helper/`](./yoga%20helper) — Hjemme Øvelser
+En dansk yoga- og udstrækningsapp med live kamera-feedback (pose estimation), rød/orange/grøn kropsvejledning og rolig dansk stemmeguide.
 
-**Live app**: https://gruppe6b.lovable.app
+- **Frontend & API**: TanStack Start + React (`src/routes/index.tsx`, `src/data/home-options.ts`, `src/routes/api/public/tts.ts`)
+- **Kamera- & øvelsesmotor**: p5.js + MediaPipe (`public/aifit/Main.js`, `public/aifit/extras.js`, `public/aifit/modules/*`)
+- **Kørsel & test**:
+  ```bash
+  cd "yoga helper"
+  bun install
+  bun run dev
+  bun run test
+  ```
 
-## Build with Lovable
+## 2. [`Health Necklace/`](./Health%20Necklace) — Knap-Taler & Sundhedsekspert 65+
+Et 1-knap stemme- og Gemini AI-assistent-interface designet til en fysisk Health Necklace / Bluetooth-knap med dansk talegenkendelse og Gemini AI-stemmer.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/44641a89-8d9a-4d2f-ae47-619070242025).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+- **Kerne-moduler**: p5.js sketch (`src/sketch.js`), Gemini assistent & TTS (`src/gemini-assistant.js`, `src/gemini-tts.js`), talegenkendelse (`src/recognition.js`), knap/gamepad-input (`src/portal/`) og valgfri macOS-knapserver (`server.py`)
+- **Kørsel & test**:
+  ```bash
+  cd "Health Necklace"
+  npm start        # eller: python3 server.py
+  npm test
+  npm run build
+  ```
